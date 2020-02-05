@@ -2,6 +2,8 @@
 #include "stm32f4xx_rcc.h"
 #include "stm32f4xx_gpio.h"
 
+#include "bsp/local/os/reg.h"
+
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
 
