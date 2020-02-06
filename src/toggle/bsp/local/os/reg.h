@@ -10,20 +10,20 @@
  */
 
 static inline uint32_t
-os_reg_read32(void *base, uint32_t reg)
+os_reg_read32(uintptr_t base, uint32_t reg)
 {
   uint32_t val;
 
-  __dsb();
+//  __dsb();
   val = *(uint32_t *)(uintptr_t)(base + reg);
   return val;
 }
 
 static inline void
-os_reg_write32(void *base, uint32_t reg, uint32_t val)
+os_reg_write32(uintptr_t base, uint32_t reg, uint32_t val)
 {
   *(uint32_t *)(uintptr_t)(base + reg) = val;
-  __dsb();
+//  __dsb();
 }
 
 #endif	/* __REG_H__ */
