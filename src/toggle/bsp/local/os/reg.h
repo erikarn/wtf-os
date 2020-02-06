@@ -14,7 +14,7 @@ os_reg_read32(void *base, uint32_t reg)
 {
   uint32_t val;
 
-  __DSB();
+  __dsb();
   val = *(uint32_t *)(uintptr_t)(base + reg);
   return val;
 }
@@ -23,7 +23,7 @@ static inline void
 os_reg_write32(void *base, uint32_t reg, uint32_t val)
 {
   *(uint32_t *)(uintptr_t)(base + reg) = val;
-  __DSB();
+  __dsb();
 }
 
 #endif	/* __REG_H__ */
