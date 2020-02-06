@@ -3,12 +3,19 @@
 #include "stm32f4xx_gpio.h"
 
 #include "bsp/local/os/reg.h"
+#include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
 
 int main(void) {
     GPIO_InitTypeDef GPIO_InitDef;
+
+    // Enable caches when fetching to/from flash
+    stm32f429_hw_flash_enable_icache();
+    stm32f429_hw_flash_enable_dcache();
+
+    // Setup GPIO pins for LEDs
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
  
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_n0;
@@ -25,7 +32,7 @@ int main(void) {
     GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_Init(GPIOG, &GPIO_InitDef);
 
- 
+    // Setup GPIO pin for button input
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
  
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_0;

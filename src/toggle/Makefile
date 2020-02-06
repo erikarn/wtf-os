@@ -17,6 +17,8 @@ CFLAGS += -DSTM32F429_439xx #Update this to match your board.
 CFLAGS += -I.
 CFLAGS += -I$(BSP_SUBDIR)/stm32f4
 
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
+
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_gpio.c
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_rcc.c
 SRCS += $(BSP_SUBDIR)/stm32f4/system_stm32f4xx.c
