@@ -4,8 +4,11 @@ STM_PERIPH=STM32F4xx_DSP_StdPeriph_Lib_V1.8.0
 
 BSP_SUBDIR=bsp
 
-CC=arm-none-eabi-gcc
-OBJCOPY=arm-none-eabi-objcopy
+# COMPILER_PATH=/usr/local/gcc-arm-embedded-8-2018-q4-major/bin
+COMPILER_PATH=/usr/local/bin
+
+CC=$(COMPILER_PATH)/arm-none-eabi-gcc
+OBJCOPY=$(COMPILER_PATH)/arm-none-eabi-objcopy
 
 CFLAGS = -g -O2 -Wall 
 CFLAGS += -T$(BSP_SUBDIR)/stm32f4/STM32F439NI_FLASH.ld
