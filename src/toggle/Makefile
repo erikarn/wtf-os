@@ -4,8 +4,8 @@ STM_PERIPH=STM32F4xx_DSP_StdPeriph_Lib_V1.8.0
 
 BSP_SUBDIR=bsp
 
-# COMPILER_PATH=/usr/local/gcc-arm-embedded-8-2018-q4-major/bin
-COMPILER_PATH=/usr/local/bin
+COMPILER_PATH=/usr/local/gcc-arm-embedded-9-2019-q4-major/bin
+# COMPILER_PATH=/usr/local/bin
 
 CC=$(COMPILER_PATH)/arm-none-eabi-gcc
 OBJCOPY=$(COMPILER_PATH)/arm-none-eabi-objcopy
