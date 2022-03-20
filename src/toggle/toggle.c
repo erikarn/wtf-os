@@ -8,6 +8,39 @@
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
 
+static void
+setup_usart1_gpios(void)
+{
+    GPIO_InitTypeDef GPIO_InitStruct;
+
+    // Enable clock for GPIOA
+    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    /**
+    * Tell pins PA9 and PA10 which alternating function you will use
+    * @important Make sure, these lines are before pins configuration!
+    */
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
+    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
+    // Initialize pins as alternating function
+    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
+    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
+    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
+    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
+    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
+    GPIO_Init(GPIOA, &GPIO_InitStruct);
+}
+
+static void
+setup_usart1(void)
+{
+    /**
+     * Enable clock for USART1 peripheral
+     */
+    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+
+    /* XXX TODO: USART1 setup itself */
+}
+
 /* Setup LED GPIOs */
 static void
 setup_led_gpios(void)
@@ -60,6 +93,9 @@ int main(void) {
 
     setup_led_gpios();
     setup_button_gpios();
+
+    setup_usart1_gpios();
+    setup_usart1();
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
     while (1) {
