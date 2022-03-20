@@ -8,7 +8,10 @@
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
 
-int main(void) {
+/* Setup LED GPIOs */
+static void
+setup_led_gpios(void)
+{
     GPIO_InitTypeDef GPIO_InitDef;
 
     // Enable caches when fetching to/from flash
@@ -17,7 +20,7 @@ int main(void) {
 
     // Setup GPIO pins for LEDs
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
- 
+
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_n0;
     GPIO_InitDef.GPIO_Mode = GPIO_Mode_OUT;
     GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
@@ -31,6 +34,12 @@ int main(void) {
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
     GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_Init(GPIOG, &GPIO_InitDef);
+}
+
+static void
+setup_button_gpios(void)
+{
+    GPIO_InitTypeDef GPIO_InitDef;
 
     // Setup GPIO pin for button input
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
@@ -41,8 +50,16 @@ int main(void) {
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_DOWN;
     GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_Init(GPIOA, &GPIO_InitDef);
+
+}
+
+
+int main(void) {
  
     volatile uint8_t button_pressed = 0;
+
+    setup_led_gpios();
+    setup_button_gpios();
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
     while (1) {
