@@ -10,7 +10,11 @@ COMPILER_PATH=/usr/local/gcc-arm-embedded/bin
 CC=$(COMPILER_PATH)/arm-none-eabi-gcc
 OBJCOPY=$(COMPILER_PATH)/arm-none-eabi-objcopy
 
-CFLAGS = -g -O2 -Wall 
+# Stuff from the STM32F4 example build, using the HAL.
+# Some are generic config options for this platform, some are
+# specific for the STM32F4 HAL.
+
+CFLAGS = -g -O2 -Wall
 CFLAGS += -T$(BSP_SUBDIR)/stm32f4/STM32F439NI_FLASH.ld
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -19,6 +23,9 @@ CFLAGS += -DUSE_STDPERIPH_DRIVER
 CFLAGS += -DSTM32F429_439xx #Update this to match your board.
 CFLAGS += -I.
 CFLAGS += -I$(BSP_SUBDIR)/stm32f4
+
+# And my budding random stuff.
+CFLAGS += -I$(BSP_SUBDIR)/local
 
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 

@@ -4,6 +4,7 @@
 
 #include "bsp/local/os/reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
+#include "bsp/local/stm32f4/stm32f429_hw_usart_reg.h"
 
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14

@@ -11396,6 +11396,7 @@ typedef struct
 #define  LPTIM_OR_OR_1                         ((uint32_t)0x00000002)               /*!< Bit 1 */
 #endif /* STM32F410xx || STM32F413_423xx */
 
+#if 0
 /******************************************************************************/
 /*                                                                            */
 /*         Universal Synchronous Asynchronous Receiver Transmitter            */
@@ -11478,6 +11479,8 @@ typedef struct
 #define  USART_GTPR_PSC_7                    ((uint16_t)0x0080)            /*!<Bit 7 */
 
 #define  USART_GTPR_GT                       ((uint16_t)0xFF00)            /*!<Guard time value */
+
+#endif
 
 /******************************************************************************/
 /*                                                                            */
