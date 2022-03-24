@@ -1,0 +1,78 @@
+#ifndef	__STM32F429_HW_UART_H__
+#define	__STM32F429_HW_UART_H__
+
+#include <os/bit.h>
+
+#define	USART_SR		0x0000
+#define		USART_SR_PE		BIT_U32(0)
+#define		USART_SR_FE		BIT_U32(1)
+#define		USART_SR_NF		BIT_U32(2)
+#define		USART_SR_ORE		BIT_U32(3)
+#define		USART_SR_IDLE		BIT_U32(4)
+#define		USART_SR_RXNE		BIT_U32(5)
+#define		USART_SR_TC		BIT_U32(6)
+#define		USART_SR_TXE		BIT_U32(7)
+#define		USART_SR_LBD		BIT_U32(8)
+#define		USART_SR_CTS		BIT_U32(9)
+
+#define	USART_DR		0x0004
+#define		USART_DR_DATA_S			0
+#define		USART_DR_DATA_M			0x1ff
+
+#define	USART_BRR		0x0008
+#define		USART_BRR_DIV_FRACTION_S	0
+#define		USART_BRR_DIV_FRACTION_M	0xf
+#define		USART_BRR_DIV_MANTISSA_S	4
+#define		USART_BRR_DIV_MANTISSA_M	0xfff
+
+#define	USART_CR1		0x000c
+#define		USART_CR1_SBK		BIT_U32(0)
+#define		USART_CR1_RWU		BIT_U32(1)
+#define		USART_CR1_RE		BIT_U32(2)
+#define		USART_CR1_TE		BIT_U32(3)
+#define		USART_CR1_IDLEIE	BIT_U32(4)
+#define		USART_CR1_RXNEIE	BIT_U32(5)
+#define		USART_CR1_TCIE		BIT_U32(6)
+#define		USART_CR1_TXEIE		BIT_U32(7)
+#define		USART_CR1_PEIE		BIT_U32(8)
+#define		USART_CR1_PS		BIT_U32(9)
+#define		USART_CR1_PCE		BIT_U32(10)
+#define		USART_CR1_WAKE		BIT_U32(11)
+#define		USART_CR1_M		BIT_U32(12)
+#define		USART_CR1_UE		BIT_U32(13)
+#define		USART_CR1_OVER8		BIT_U32(15)
+
+#define	USART_CR2		0x0010
+#define		USART_CR2_ADD_S		0
+#define		USART_CR2_ADD_M		0xf
+#define		USART_CR2_LBDL		BIT_U32(5)
+#define		USART_CR2_LBDIE		BIT_U32(6)
+#define		USART_CR2_LBCL		BIT_U32(8)
+#define		USART_CR2_CPHA		BIT_U32(9)
+#define		USART_CR2_CPOL		BIT_U32(10)
+#define		USART_CR2_CLKEN		BIT_U32(11)
+#define		USART_CR2_STOP_S	12
+#define		USART_CR2_STOP_M	0x3
+#define		USART_CR2_LINEN		BIT_U32(14)
+
+#define	USART_CR3		0x0014
+#define		USART_CR3_EIE		BIT_U32(0)
+#define		USART_CR3_IREN		BIT_U32(1)
+#define		USART_CR3_IRLP		BIT_U32(2)
+#define		USART_CR3_HDSEL		BIT_U32(3)
+#define		USART_CR3_NACK		BIT_U32(4)
+#define		USART_CR3_SCEN		BIT_U32(5)
+#define		USART_CR3_DMAR		BIT_U32(6)
+#define		USART_CR3_DMAT		BIT_U32(7)
+#define		USART_CR3_RTSE		BIT_U32(8)
+#define		USART_CR3_CTSE		BIT_U32(9)
+#define		USART_CR3_CTSIE		BIT_U32(10)
+#define		USART_CR3_ONEBIT	BIT_U32(11)
+
+#define	USART_GTPR		0x0018
+#define		USART_GTPR_PSC_S	0
+#define		USART_GTPR_PSC_M	0xff
+#define		USART_GTPR_GT_S		8
+#define		USART_GTPR_GT_M		0xff
+
+#endif	/* __STM32F429_HW_UART_H__ */
