@@ -20,7 +20,11 @@ CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += --specs=nosys.specs
 CFLAGS += -DUSE_STDPERIPH_DRIVER
+# The stm32f429-disco board has an 8MHz crystal, but the BSP code
+# defaults this CPU type to 25MHz.  The PLL_M divisor also needs
+# updating; it defaults to 25 but that's too high for an 8MHz clock.
 CFLAGS += -DSTM32F429_439xx #Update this to match your board.
+CFLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 CFLAGS += -I.
 CFLAGS += -I$(BSP_SUBDIR)/stm32f4
 
