@@ -28,16 +28,17 @@ CFLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 CFLAGS += -I.
 CFLAGS += -I$(BSP_SUBDIR)/stm32f4
 
-# And my budding random stuff.
-CFLAGS += -I$(BSP_SUBDIR)/local
-
-SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
-
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_gpio.c
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_rcc.c
 SRCS += $(BSP_SUBDIR)/stm32f4/system_stm32f4xx.c
 # Note: this isn't the SDRAM or SRAM initialisation startup
 SRCS += $(BSP_SUBDIR)/stm32f4/startup_stm32f429_439xx.s
+
+# And my budding random stuff.
+CFLAGS += -I$(BSP_SUBDIR)/local
+
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 
 .PHONY: toggle
 

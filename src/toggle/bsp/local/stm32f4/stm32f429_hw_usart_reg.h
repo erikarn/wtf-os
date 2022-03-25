@@ -16,14 +16,14 @@
 #define		USART_SR_CTS		BIT_U32(9)
 
 #define	USART_DR		0x0004
+#define		USART_DR_DATA_M			0x000001ff
 #define		USART_DR_DATA_S			0
-#define		USART_DR_DATA_M			0x1ff
 
 #define	USART_BRR		0x0008
+#define		USART_BRR_DIV_FRACTION_M	0x0000000f
 #define		USART_BRR_DIV_FRACTION_S	0
-#define		USART_BRR_DIV_FRACTION_M	0xf
+#define		USART_BRR_DIV_MANTISSA_M	0x0000fff0
 #define		USART_BRR_DIV_MANTISSA_S	4
-#define		USART_BRR_DIV_MANTISSA_M	0xfff
 
 #define	USART_CR1		0x000c
 #define		USART_CR1_SBK		BIT_U32(0)
@@ -43,16 +43,16 @@
 #define		USART_CR1_OVER8		BIT_U32(15)
 
 #define	USART_CR2		0x0010
+#define		USART_CR2_ADD_M		0x0000000f
 #define		USART_CR2_ADD_S		0
-#define		USART_CR2_ADD_M		0xf
 #define		USART_CR2_LBDL		BIT_U32(5)
 #define		USART_CR2_LBDIE		BIT_U32(6)
 #define		USART_CR2_LBCL		BIT_U32(8)
 #define		USART_CR2_CPHA		BIT_U32(9)
 #define		USART_CR2_CPOL		BIT_U32(10)
 #define		USART_CR2_CLKEN		BIT_U32(11)
+#define		USART_CR2_STOP_M	0x00003000
 #define		USART_CR2_STOP_S	12
-#define		USART_CR2_STOP_M	0x3
 #define		USART_CR2_LINEN		BIT_U32(14)
 
 #define	USART_CR3		0x0014
@@ -70,9 +70,9 @@
 #define		USART_CR3_ONEBIT	BIT_U32(11)
 
 #define	USART_GTPR		0x0018
+#define		USART_GTPR_PSC_M	0x000000ff
 #define		USART_GTPR_PSC_S	0
-#define		USART_GTPR_PSC_M	0xff
+#define		USART_GTPR_GT_M		0x0000ff00
 #define		USART_GTPR_GT_S		8
-#define		USART_GTPR_GT_M		0xff
 
 #endif	/* __STM32F429_HW_UART_H__ */

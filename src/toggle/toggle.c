@@ -4,7 +4,8 @@
 
 #include "bsp/local/os/reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
-#include "bsp/local/stm32f4/stm32f429_hw_usart_reg.h"
+#include "bsp/local/stm32f4/stm32f429_hw_usart.h"
+
 
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
@@ -34,12 +35,20 @@ setup_usart1_gpios(void)
 static void
 setup_usart1(void)
 {
-    /**
+    RCC_ClocksTypeDef clks;
+
+    /*
      * Enable clock for USART1 peripheral
      */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
 
-    /* XXX TODO: USART1 setup itself */
+    /*
+     * Get the clock frequencies from the RCC block.
+     */
+    RCC_GetClocksFreq(&clks);
+
+    /* USART1 setup itself, it's on APB2 */
+    stm32f429_uart_init(115200, clks.PCLK2_Frequency);
 }
 
 /* Setup LED GPIOs */
@@ -105,6 +114,7 @@ int main(void) {
                 button_pressed = 1;
                 GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
                 GPIO_ToggleBits(GPIOG, GPIO_Pin_n1);
+                stm32f429_uart_tx_byte('a');
             }
         } else {
             button_pressed = 0;
