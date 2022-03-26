@@ -120,6 +120,6 @@ stm32f429_uart_tx_byte(uint8_t c)
 	os_reg_write32(USART1_BASE, USART_DR, c);
 
 	/* Wait until it's going out to the shift register */
-	while ((os_reg_read32(USART1_BASE, USART_SR) & USART_SR_TXE) != 0)
+	while ((os_reg_read32(USART1_BASE, USART_SR) & USART_SR_TXE) == 0)
 		;
 }
