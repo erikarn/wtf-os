@@ -14,7 +14,7 @@ OBJCOPY=$(COMPILER_PATH)/arm-none-eabi-objcopy
 # Some are generic config options for this platform, some are
 # specific for the STM32F4 HAL.
 
-CFLAGS = -g -O2 -Wall
+CFLAGS = -g -O -Wall
 CFLAGS += -T$(BSP_SUBDIR)/stm32f4/STM32F439NI_FLASH.ld
 CFLAGS += -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 CFLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
@@ -36,6 +36,7 @@ SRCS += $(BSP_SUBDIR)/stm32f4/startup_stm32f429_439xx.s
 
 # And my budding random stuff.
 CFLAGS += -I$(BSP_SUBDIR)/local
+CFLAGS += -I$(BSP_SUBDIR)/local/arm-m4-32
 
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c

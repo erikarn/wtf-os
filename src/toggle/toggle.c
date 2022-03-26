@@ -108,6 +108,7 @@ int main(void) {
     setup_usart1();
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
+#if 0
     while (1) {
         if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0)) {
             if (!button_pressed) {
@@ -119,5 +120,11 @@ int main(void) {
         } else {
             button_pressed = 0;
         }
+    }
+#endif
+    while (1) {
+        GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
+        GPIO_ToggleBits(GPIOG, GPIO_Pin_n1);
+        stm32f429_uart_tx_byte('a');
     }
 }
