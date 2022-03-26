@@ -57,7 +57,7 @@
 #define UART8_BASE            (APB1PERIPH_BASE + 0x7C00UL)
 
 /* APB2 peripherals */
-#define USART1_BASE           (APB2PERIPH_BASE + 0x0400UL)
+#define USART1_BASE           (APB2PERIPH_BASE + 0x1000UL)
 
 /*!< AHB1 peripherals */
 #define GPIOA_BASE            (AHB1PERIPH_BASE + 0x0000UL)
