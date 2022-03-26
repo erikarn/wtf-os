@@ -6,9 +6,28 @@
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
 
+#include "kern/console/console.h"
 
+/* LED pins for blinking */
 #define GPIO_Pin_n0 GPIO_Pin_13
 #define GPIO_Pin_n1 GPIO_Pin_14
+
+static void
+cons_putc(char c)
+{
+	stm32f429_uart_tx_byte(c);
+}
+
+static void
+cons_flush(void)
+{
+}
+
+/* Console ops for this platform */
+static struct console_ops c_ops = {
+	.putc_fn = cons_putc,
+	.flush_fn = cons_flush,
+};
 
 static void
 setup_usart1_gpios(void)
@@ -107,7 +126,12 @@ int main(void) {
     setup_usart1_gpios();
     setup_usart1();
 
-    stm32f429_uart_tx_byte('\n');
+    /* console initialisation */
+    console_init();
+    console_set_ops(&c_ops);
+
+    console_puts("\n");
+    console_puts("[wtfos] Welcome to wtf-os!\n");
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
 #if 1
@@ -117,7 +141,7 @@ int main(void) {
                 button_pressed = 1;
                 GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
                 GPIO_ToggleBits(GPIOG, GPIO_Pin_n1);
-                stm32f429_uart_tx_byte('a');
+                console_puts("[button] pressed!\n");
             }
         } else {
             button_pressed = 0;

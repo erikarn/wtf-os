@@ -1,4 +1,5 @@
 BSP_SUBDIR=bsp
+KERN_SUBDIR=kern
 
 COMPILER_PATH=/usr/local/gcc-arm-embedded/bin
 # COMPILER_PATH=/usr/local/bin
@@ -28,7 +29,7 @@ C_FLAGS += -DUSE_STDPERIPH_DRIVER
 C_FLAGS += -DSTM32F429_439xx #Update this to match your board.
 C_FLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 
-# Sources being built.
+# stm32f4 HAL Sources being built.
 
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_gpio.c
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_rcc.c
@@ -42,6 +43,8 @@ C_FLAGS += -I$(BSP_SUBDIR)/local/arm-m4-32
 
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
+
+SRCS += $(KERN_SUBDIR)/console/console.c
 
 # The top-level program!
 SRCS += toggle.c
