@@ -15,22 +15,29 @@
  */
 
 static void
-stm32f429_uart_set_baud(int baud, int apbclock, int is_oversampling)
+stm32f429_uart_set_baud(uint32_t baud, uint32_t apbclock,
+    int is_oversampling)
 {
 	uint32_t pre, m, frac, reg;
 
-	/* Calculate the pre (100x) scaled value */
+	/* Calculate the pre scaled value */
 	if (is_oversampling) {
-		pre = (apbclock * 100) / (16 * baud);
+		pre = (apbclock * 25) / (16 * baud);
 	} else {
-		pre = (apbclock * 100) / (8 * baud);
+		pre = (apbclock * 25) / (8 * baud);
 	}
 
 	/* Calculate mantissa value to use */
-	m = pre / 100;
+	m = pre / 25;
 
 	/* calculate fractional part to use */
-	frac = pre - (m * 100);
+	frac = pre - (m * 25);
+
+	if (is_oversampling) {
+		frac = frac & 0xf;
+	} else {
+		frac = frac & 0x7;
+	}
 
 	/* program it in */
 	reg = os_reg_read32(USART1_BASE, USART_BRR);
@@ -46,7 +53,7 @@ stm32f429_uart_set_baud(int baud, int apbclock, int is_oversampling)
  * from here.
  */
 void
-stm32f429_uart_init(int baud, int apbclock)
+stm32f429_uart_init(uint32_t baud, uint32_t apbclock)
 {
 	uint32_t reg;
 
