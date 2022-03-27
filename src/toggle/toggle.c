@@ -119,6 +119,7 @@ setup_button_gpios(void)
 int main(void) {
  
     volatile uint8_t button_pressed = 0;
+    RCC_ClocksTypeDef clks;
 
     setup_led_gpios();
     setup_button_gpios();
@@ -131,7 +132,13 @@ int main(void) {
     console_set_ops(&c_ops);
 
     console_puts("\n");
-    console_puts("[wtfos] Welcome to wtf-os!\n");
+    console_printf("[wtfos] Welcome to wtf-os!\n");
+
+    /* for something to printf */
+    RCC_GetClocksFreq(&clks);
+    console_printf("[wtfos] pclk1 freq=%d MHz, pclk2 freq=%d MHz\n",
+        clks.PCLK1_Frequency,
+        clks.PCLK2_Frequency);
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
 #if 1
