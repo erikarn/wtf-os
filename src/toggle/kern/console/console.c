@@ -1,5 +1,7 @@
 
 #include <stddef.h>
+#include <stdarg.h>
+
 #include <kern/console/console.h>
 #include <kern/libraries/printf/mini_printf.h>
 
@@ -122,4 +124,11 @@ console_printf(const char *fmt, ...)
 	va_end(va);
 
 	return (ret);
+}
+
+int
+console_vprintf(const char *fmt, va_list args)
+{
+
+	return mini_vpprintf(_console_printf_puts, NULL, fmt, args);
 }

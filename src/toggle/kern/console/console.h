@@ -1,6 +1,8 @@
 #ifndef	__KERN_CONSOLE_H__
 #define	__KERN_CONSOLE_H__
 
+#include <stdarg.h>
+
 typedef void console_op_putc_fn_t(char c);
 typedef void console_op_flush_fn_t(void);
 
@@ -17,5 +19,6 @@ extern	void console_puts(const char *s);
 extern	void console_flush(void);
 
 extern	int console_printf(const char *fmt, ...);
+extern	int console_vprintf(const char *fmt, va_list va);
 
 #endif	/* __KERN_CONSOLE_H__ */

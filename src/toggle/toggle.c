@@ -7,6 +7,7 @@
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
 
 #include "kern/console/console.h"
+#include "core/platform.h"
 
 /* LED pins for blinking */
 #define GPIO_Pin_n0 GPIO_Pin_13
@@ -121,6 +122,8 @@ int main(void) {
     volatile uint8_t button_pressed = 0;
     RCC_ClocksTypeDef clks;
 
+    /* Setup initial hardware before we setup console, echo etc */
+
     setup_led_gpios();
     setup_button_gpios();
 
@@ -133,6 +136,8 @@ int main(void) {
 
     console_puts("\n");
     console_printf("[wtfos] Welcome to wtf-os!\n");
+
+    platform_cpu_init();
 
     /* for something to printf */
     RCC_GetClocksFreq(&clks);

@@ -1,3 +1,4 @@
+
 BSP_SUBDIR=bsp
 KERN_SUBDIR=kern
 
@@ -44,9 +45,17 @@ C_FLAGS += -I$(BSP_SUBDIR)/local/arm-m4-32
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 
-SRCS += $(KERN_SUBDIR)/console/console.c
+# Testing for now; I haven't implemented a RAM VTOR yet.
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
 
+# defines the default interrupt/exception handlers.
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
+
+SRCS += $(KERN_SUBDIR)/console/console.c
+SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
+
 
 # The top-level program!
 SRCS += toggle.c
