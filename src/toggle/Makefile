@@ -46,6 +46,8 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 
 SRCS += $(KERN_SUBDIR)/console/console.c
 
+SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
+
 # The top-level program!
 SRCS += toggle.c
 
