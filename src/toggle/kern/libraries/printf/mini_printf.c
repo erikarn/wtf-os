@@ -41,7 +41,7 @@
  *
  */
 
-#include "mini-printf.h"
+#include "mini_printf.h"
 
 static int
 mini_strlen(const char *s)
