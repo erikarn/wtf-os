@@ -1,17 +1,28 @@
 
 #include <stddef.h>
-
 #include <kern/console/console.h>
+#include <kern/libraries/printf/mini_printf.h>
 
 static char cons_add_crlf = 1;
 
 static struct console_ops *c_ops = NULL;
 
+/**
+ * Initialise the console subsystem.
+ */
 void
 console_init(void)
 {
 }
 
+/**
+ * Set the console operations.
+ *
+ * These are the underlying hardware operations to
+ * read, write and flush the console device.
+ *
+ * @param[in] c console operations
+ */
 void
 console_set_ops(struct console_ops *c)
 {
@@ -52,6 +63,28 @@ console_puts(const char *s)
 }
 
 /**
+ * Write a string to the console, knowing the length.
+ *
+ * This will do LF->CRLF translation if enabled.
+ *
+ * @param[in] s C string to write.
+ */
+void
+console_putsn(const char *s, size_t len)
+{
+	size_t i;
+
+	for (i = 0; i < len; i++) {
+		if ((cons_add_crlf == 1) && (*s == '\n')) {
+			console_putc('\r');
+		}
+		console_putc(*s);
+		s++;
+	}
+}
+
+
+/**
  * Flush the console to the underlying physical device.
  *
  * If ths console is buffered and/or if the underlying
@@ -61,4 +94,32 @@ console_puts(const char *s)
 void
 console_flush(void)
 {
+}
+
+/**
+ * Test console printf implementation.
+ *
+ * This uses the mini printf implementation and a local stream
+ * iterator to print each byte out as we receive it.
+ */
+static int
+_console_printf_puts(char *s, int len, void *state)
+{
+
+	console_putsn(s, len);
+
+	return (len);
+}
+
+int
+console_printf(const char *fmt, ...)
+{
+	va_list va;
+	int ret;
+
+	va_start(va, fmt);
+	ret = mini_vpprintf(_console_printf_puts, NULL, fmt, va);
+	va_end(va);
+
+	return (ret);
 }

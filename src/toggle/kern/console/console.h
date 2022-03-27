@@ -16,4 +16,6 @@ extern	void console_putc(char c);
 extern	void console_puts(const char *s);
 extern	void console_flush(void);
 
+extern	int console_printf(const char *fmt, ...);
+
 #endif	/* __KERN_CONSOLE_H__ */
