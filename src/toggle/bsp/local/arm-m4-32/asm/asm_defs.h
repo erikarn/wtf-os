@@ -26,14 +26,18 @@ __attribute__( ( always_inline ) ) static inline void arm_isb(void)
 
 __attribute__( ( always_inline ) ) static inline uint32_t get_ipsr(void)
 {
-	register uint32_t ispr asm ("ipsr");
-	return (ispr);
+	uint32_t result;
+
+	asm volatile ("MRS %0, ipsr" : "=r" (result) );
+	return (result);
 }
 
 __attribute__( ( always_inline ) ) static inline uint32_t get_apsr(void)
 {
-	register uint32_t aspr asm ("apsr");
-	return (aspr);
+	uint32_t result;
+
+	asm volatile ("MRS %0, apsr" : "=r" (result) );
+	return (result);
 }
 
 
