@@ -18,6 +18,16 @@ __attribute__( ( always_inline ) ) static inline void arm_isb(void)
   asm volatile ("isb");
 }
 
+__attribute__( ( always_inline ) ) static inline void enable_irq(void)
+{
+	asm volatile ("cpsie i" : : : "memory");
+}
+
+__attribute__( ( always_inline ) ) static inline void disable_irq(void)
+{
+	asm volatile ("cpsid i" : : : "memory");
+}
+
 // WFI - wait for interrupt
 // WFE - wait for event
 // SEV - send event

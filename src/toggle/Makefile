@@ -51,6 +51,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
 # defines the default interrupt/exception handlers.
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c

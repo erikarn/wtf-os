@@ -8,6 +8,8 @@
 #include "stm32f429_hw_usart_reg.h"
 #include "stm32f429_hw_usart.h"
 
+#include <core/platform.h>
+
 /*
  * This driver is purely for USART1.  Right now it doesn't
  * "know" about the mappings between APB1/APB2 and the RCC
@@ -129,4 +131,35 @@ stm32f429_uart_tx_byte(uint8_t c)
 	/* Wait until it's going out to the shift register */
 	while ((os_reg_read32(USART1_BASE, USART_SR) & USART_SR_TXE) == 0)
 		;
+}
+
+/**
+ * Enable interrupts for receive.
+ */
+void
+stm32f429_uart_enable_rx_intr(void)
+{
+	uint32_t reg;
+
+	reg = os_reg_read32(USART1_BASE, USART_CR1);
+	reg |= USART_CR1_RXNEIE;
+	os_reg_write32(USART1_BASE, USART_CR1, reg);
+
+	platform_irq_enable(37); /* XXX hard-coded */
+}
+
+/**
+ * Disable interrupts for receive.
+ */
+void
+stm32f429_uart_disable_rx_intr(void)
+{
+	uint32_t reg;
+
+	platform_irq_disable(37); /* XXX hard-coded */
+
+	reg = os_reg_read32(USART1_BASE, USART_CR1);
+	reg &= ~USART_CR1_RXNEIE;
+	os_reg_write32(USART1_BASE, USART_CR1, reg);
+
 }

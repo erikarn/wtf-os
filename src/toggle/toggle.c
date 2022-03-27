@@ -139,6 +139,13 @@ int main(void) {
 
     platform_cpu_init();
 
+    // Enable CPU interrupts
+    platform_cpu_irq_enable();
+
+    /* do post CPU init interrupt enable for things like USART */
+    /* (yeah a hack for now) */
+    stm32f429_uart_enable_rx_intr();
+
     /* for something to printf */
     RCC_GetClocksFreq(&clks);
     console_printf("[wtfos] pclk1 freq=%d MHz, pclk2 freq=%d MHz\n",
