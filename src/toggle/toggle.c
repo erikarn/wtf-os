@@ -106,19 +106,31 @@ setup_button_gpios(void)
 
     // Setup GPIO pin for button input
     RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
- 
+
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_0;
     GPIO_InitDef.GPIO_Mode = GPIO_Mode_IN;
     GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
     GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_DOWN;
     GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
     GPIO_Init(GPIOA, &GPIO_InitDef);
-
 }
 
+/**
+ * USART1 interrupt handler, overrides the weak symbol in the startup .s
+ * file.
+ *
+ * In theory this should come in at supervisor level.
+ */
+void
+USART1_IRQHandler(void)
+{
 
-int main(void) {
- 
+	stm32f429_uart_interrupt();
+}
+
+int main(void)
+{
+
     volatile uint8_t button_pressed = 0;
     RCC_ClocksTypeDef clks;
 

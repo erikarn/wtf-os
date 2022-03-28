@@ -134,6 +134,33 @@ stm32f429_uart_tx_byte(uint8_t c)
 }
 
 /**
+ * UART interrupt handler.
+ *
+ * This is called by the UART interrupt to process an interrupt.
+ */
+void
+stm32f429_uart_interrupt(void)
+{
+	uint32_t reg;
+	volatile uint32_t r;
+
+	reg = os_reg_read32(USART1_BASE, USART_SR);
+
+	/*
+	 * Test OE before RXNE, as reading from DR will clear both
+	 * conditions.
+	 */
+	if (reg & USART_SR_ORE) {
+		/* XXX TODO */
+	}
+	if (reg & USART_SR_RXNE) {
+		r = os_reg_read32(USART1_BASE, USART_DR);
+		/* XXX TODO */
+		(void) r;
+	}
+}
+
+/**
  * Enable interrupts for receive.
  */
 void
@@ -145,7 +172,7 @@ stm32f429_uart_enable_rx_intr(void)
 	reg |= USART_CR1_RXNEIE;
 	os_reg_write32(USART1_BASE, USART_CR1, reg);
 
-	platform_irq_enable(37); /* XXX hard-coded */
+	platform_irq_enable(37); /* XXX TODO: hard-coded; move it */
 }
 
 /**
@@ -156,7 +183,7 @@ stm32f429_uart_disable_rx_intr(void)
 {
 	uint32_t reg;
 
-	platform_irq_disable(37); /* XXX hard-coded */
+	platform_irq_disable(37); /* XXX TODO: hard-coded; move it */
 
 	reg = os_reg_read32(USART1_BASE, USART_CR1);
 	reg &= ~USART_CR1_RXNEIE;
