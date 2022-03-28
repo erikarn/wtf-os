@@ -99,6 +99,24 @@ console_flush(void)
 }
 
 /**
+ * Add a character into the console input buffer.
+ *
+ * This is to be called from the receive path of the console
+ * driver to push characters into the console input path.
+ *
+ * This routine will likely be called from an interrupt context,
+ * so when it's time to actually do anything, we'll want to have
+ * some kind of interrupt/mutex/spinlock stuff going.
+ *
+ * @param[in] c character to add to the input.
+ */
+void
+console_input(char c)
+{
+	/* XXX TODO, obviously */
+}
+
+/**
  * Test console printf implementation.
  *
  * This uses the mini printf implementation and a local stream

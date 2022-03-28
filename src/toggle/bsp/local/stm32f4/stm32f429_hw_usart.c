@@ -16,6 +16,8 @@
  * registers to poke.  That can come later.
  */
 
+static int16_t rx_char = -1;
+
 static void
 stm32f429_uart_set_baud(uint32_t baud, uint32_t apbclock,
     int is_oversampling)
@@ -142,7 +144,7 @@ void
 stm32f429_uart_interrupt(void)
 {
 	uint32_t reg;
-	volatile uint32_t r;
+	uint32_t r;
 
 	reg = os_reg_read32(USART1_BASE, USART_SR);
 
@@ -155,9 +157,28 @@ stm32f429_uart_interrupt(void)
 	}
 	if (reg & USART_SR_RXNE) {
 		r = os_reg_read32(USART1_BASE, USART_DR);
-		/* XXX TODO */
-		(void) r;
+		rx_char = (uint16_t) (MS(r, USART_DR_DATA)) & 0xff;
 	}
+}
+
+/**
+ * Return if there's a character in the input buffer, or
+ * -1 if there isn't.
+ *
+ * This routine is non-blocking, and it designed to be called
+ * from the interrupt context after the UART interrupt routine
+ * has run.
+ *
+ * @retval -1 if no character, or >= 0 if a character has been read.
+ */
+int16_t
+stm32f429_uart_try_read(void)
+{
+	int16_t r;
+
+	r = rx_char;
+	rx_char = -1;
+	return (r);
 }
 
 /**

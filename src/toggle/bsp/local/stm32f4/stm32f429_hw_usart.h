@@ -6,5 +6,6 @@ extern	void stm32f429_uart_tx_byte(uint8_t c);
 extern	void stm32f429_uart_interrupt(void);
 extern	void stm32f429_uart_enable_rx_intr(void);
 extern	void stm32f429_uart_disable_rx_intr(void);
+extern	int16_t stm32f429_uart_try_read(void);
 
 #endif	/* __STM32F429_USART_H__ */

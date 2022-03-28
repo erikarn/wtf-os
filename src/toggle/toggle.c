@@ -124,8 +124,13 @@ setup_button_gpios(void)
 void
 USART1_IRQHandler(void)
 {
-
+	int16_t r;
 	stm32f429_uart_interrupt();
+
+	r = stm32f429_uart_try_read();
+	if (r > -1) {
+		console_input(r);
+	}
 }
 
 int main(void)
