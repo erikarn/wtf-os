@@ -4,24 +4,40 @@
 #include <hw/scb_defs.h>
 
 #include <os/reg.h>
+#include <core/platform.h>
 
 #include <kern/console/console.h>
 #include <kern/core/exception.h>
 
+
 /**
  * The default interrupt handler.
+ *
+ * This disables the interrupt to avoid interrupt storms.
  */
 void
-arm_m4_default_interrupt_handler(void)
+_arm_m4_default_interrupt_handler(void)
 {
-	console_printf("%s: called\n", __func__);
+	uint32_t ipsr;
+
+	ipsr = get_ipsr() - 16;
+
+	console_printf("[exception] unhandled NVIC IRQ (%d), disabling\n",
+	    ipsr);
+
+	/*
+	 * Map IPSR to an actual NVIC IRQ.
+	 *
+	 * XXX TODO: hard-coded constant above!
+	 */
+	platform_irq_disable(ipsr);
 }
 
 /**
  * The default exception handler.
  */
 void
-arm_m4_default_exception_handler(void)
+_arm_m4_default_exception_handler(void)
 {
 	uint32_t ipsr, apsr;
 
