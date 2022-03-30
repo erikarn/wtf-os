@@ -114,6 +114,7 @@ void
 console_input(char c)
 {
 	/* XXX TODO, obviously */
+	console_putc(c);
 }
 
 /**
