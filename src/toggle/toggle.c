@@ -5,6 +5,7 @@
 #include "bsp/local/os/reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
+#include "bsp/local/stm32f4/stm32f429_hw_rcc.h"
 
 #include "kern/console/console.h"
 #include "core/platform.h"
@@ -135,7 +136,6 @@ USART1_IRQHandler(void)
 
 int main(void)
 {
-
     volatile uint8_t button_pressed = 0;
     RCC_ClocksTypeDef clks;
 
@@ -168,6 +168,8 @@ int main(void)
     console_printf("[wtfos] pclk1 freq=%d MHz, pclk2 freq=%d MHz\n",
         clks.PCLK1_Frequency,
         clks.PCLK2_Frequency);
+    console_printf("[wtfos] calculated core freq=%d MHz\n",
+        stm32f429_get_system_core_clock());
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
 #if 1
