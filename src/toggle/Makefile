@@ -1,4 +1,3 @@
-
 BSP_SUBDIR=bsp
 KERN_SUBDIR=kern
 
@@ -34,8 +33,6 @@ C_FLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_gpio.c
 SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_rcc.c
-# Note: this isn't the SDRAM or SRAM initialisation startup
-SRCS += $(BSP_SUBDIR)/stm32f4/startup_stm32f429_439xx.s
 
 # And my budding random stuff.
 C_FLAGS += -I$(BSP_SUBDIR)/local
@@ -45,6 +42,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_startup.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
 # Testing for now; I haven't implemented a RAM VTOR yet.
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
