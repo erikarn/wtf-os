@@ -27,4 +27,12 @@
 #define	ARM_M4_SCB_REG_BFAR		0xd38
 #define	ARM_M4_SCB_REG_AFSR		0xd3c
 
+/*
+ * Floating point coprocessor region. (Table 56.)
+ */
+#define	ARM_M4_SCB_REG_CPACR		0xd88
+#define	ARM_M4_SCB_REG_FPCCR		0xf34
+#define	ARM_M4_SCB_REG_FPCAR		0xf38
+#define	ARM_M4_SCB_REG_FPDCSR		0xf3c
+
 #endif	/* __ARM_SCB_DEFS_H__ */
