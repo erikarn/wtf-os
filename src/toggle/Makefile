@@ -18,23 +18,21 @@ GEN_FLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 # if passed into the assembler.
 
 C_FLAGS = -g -O -Wall
-C_FLAGS += -T$(BSP_SUBDIR)/stm32f4/STM32F439NI_FLASH.ld
+C_FLAGS += -T$(BSP_SUBDIR)/local/stm32f4/STM32F439NI_FLASH.ld
 # The stm32f429-disco board has an 8MHz crystal, but the BSP code
 # defaults this CPU type to 25MHz.  The PLL_M divisor also needs
 # updating; it defaults to 25 but that's too high for an 8MHz clock.
 C_FLAGS += -I.
 C_FLAGS += -I$(BSP_SUBDIR)/stm32f4
 C_FLAGS += --specs=nosys.specs
-C_FLAGS += -DUSE_STDPERIPH_DRIVER
-C_FLAGS += -DSTM32F429_439xx #Update this to match your board.
+# C_FLAGS += -DUSE_STDPERIPH_DRIVER
+# C_FLAGS += -DSTM32F429_439xx #Update this to match your board.
+
+# XXX TODO: startup and rcc code needs these fixed and unified!
 C_FLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 
-# stm32f4 HAL Sources being built.
+# My little hardware / CPU library
 
-SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_gpio.c
-SRCS += $(BSP_SUBDIR)/stm32f4/stm32f4xx_rcc.c
-
-# And my budding random stuff.
 C_FLAGS += -I$(BSP_SUBDIR)/local
 C_FLAGS += -I$(BSP_SUBDIR)/local/arm-m4-32
 
@@ -43,6 +41,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_startup.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc_table.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_gpio.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
 # Testing for now; I haven't implemented a RAM VTOR yet.
@@ -51,6 +50,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 
+# And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c

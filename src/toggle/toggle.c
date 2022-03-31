@@ -1,19 +1,16 @@
-#include "stm32f4xx.h"
-#include "stm32f4xx_rcc.h"
-#include "stm32f4xx_gpio.h"
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
 
 #include "bsp/local/os/reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
 #include "bsp/local/stm32f4/stm32f429_hw_rcc.h"
 #include "bsp/local/stm32f4/stm32f429_hw_rcc_defs.h"
+#include "bsp/local/stm32f4/stm32f429_hw_gpio.h"
 
 #include "kern/console/console.h"
 #include "core/platform.h"
-
-/* LED pins for blinking */
-#define GPIO_Pin_n0 GPIO_Pin_13
-#define GPIO_Pin_n1 GPIO_Pin_14
 
 static void
 cons_putc(char c)
@@ -35,24 +32,24 @@ static struct console_ops c_ops = {
 static void
 setup_usart1_gpios(void)
 {
-    GPIO_InitTypeDef GPIO_InitStruct;
+    struct stm32f429_hw_gpio_pin_config cfg;
 
     // Enable clock for GPIOA
     stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOA, true);
 
-    /**
-    * Tell pins PA9 and PA10 which alternating function you will use
-    * @important Make sure, these lines are before pins configuration!
-    */
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource9, GPIO_AF_USART1);
-    GPIO_PinAFConfig(GPIOA, GPIO_PinSource10, GPIO_AF_USART1);
-    // Initialize pins as alternating function
-    GPIO_InitStruct.GPIO_Pin = GPIO_Pin_9 | GPIO_Pin_10;
-    GPIO_InitStruct.GPIO_Mode = GPIO_Mode_AF;
-    GPIO_InitStruct.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitStruct.GPIO_PuPd = GPIO_PuPd_UP;
-    GPIO_InitStruct.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+    /* XXX TODO: 0x07 == GPIO_AF_USART1 */
+    stm32f429_hw_gpio_alternate_set(STM32F429_HW_GPIO_BLOCK_GPIOA, 9, 0x07);
+    stm32f429_hw_gpio_alternate_set(STM32F429_HW_GPIO_BLOCK_GPIOA, 10, 0x07);
+
+    stm32f429_hw_gpio_config_init(&cfg);
+    cfg.mode = STM32F429_HW_GPIO_PIN_MODE_ALTERNATE;
+    cfg.speed = STM32F429_HW_GPIO_PIN_SPEED_MED;
+    cfg.out_type = STM32F429_HW_GPIO_PIN_OUTPUT_TYPE_PUPD;
+    cfg.out_pupd = STM32F429_HW_GPIO_PIN_PUPD_PULL_UP;
+
+    stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOA, 9, &cfg);
+    stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOA, 10, &cfg);
 }
 
 static void
@@ -74,7 +71,7 @@ setup_usart1(void)
 static void
 setup_led_gpios(void)
 {
-    GPIO_InitTypeDef GPIO_InitDef;
+    struct stm32f429_hw_gpio_pin_config cfg;
 
     // Enable caches when fetching to/from flash
     stm32f429_hw_flash_enable_icache();
@@ -83,35 +80,31 @@ setup_led_gpios(void)
     // Setup GPIO pins for LEDs
     stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOG, true);
 
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_n0;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_Init(GPIOG, &GPIO_InitDef);
+    stm32f429_hw_gpio_config_init(&cfg);
+    cfg.mode = STM32F429_HW_GPIO_PIN_MODE_OUTPUT;
+    cfg.speed = STM32F429_HW_GPIO_PIN_SPEED_LOW;
+    cfg.out_type = STM32F429_HW_GPIO_PIN_OUTPUT_TYPE_PUPD;
+    cfg.out_pupd = STM32F429_HW_GPIO_PIN_PUPD_NONE;
 
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_n1;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_OUT;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_NOPULL;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_Init(GPIOG, &GPIO_InitDef);
+    stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOG, 13, &cfg);
+    stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOG, 14, &cfg);
 }
 
 static void
 setup_button_gpios(void)
 {
-    GPIO_InitTypeDef GPIO_InitDef;
+    struct stm32f429_hw_gpio_pin_config cfg;
 
     // Setup GPIO pin for button input
     stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOA, true);
 
-    GPIO_InitDef.GPIO_Pin = GPIO_Pin_0;
-    GPIO_InitDef.GPIO_Mode = GPIO_Mode_IN;
-    GPIO_InitDef.GPIO_OType = GPIO_OType_PP;
-    GPIO_InitDef.GPIO_PuPd = GPIO_PuPd_DOWN;
-    GPIO_InitDef.GPIO_Speed = GPIO_Speed_100MHz;
-    GPIO_Init(GPIOA, &GPIO_InitDef);
+    stm32f429_hw_gpio_config_init(&cfg);
+    cfg.mode = STM32F429_HW_GPIO_PIN_MODE_INPUT;
+    cfg.speed = STM32F429_HW_GPIO_PIN_SPEED_LOW;
+    cfg.out_type = STM32F429_HW_GPIO_PIN_OUTPUT_TYPE_PUPD;
+    cfg.out_pupd = STM32F429_HW_GPIO_PIN_PUPD_PULL_DOWN;
+
+    stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOA, 0, &cfg);
 }
 
 /**
@@ -167,15 +160,16 @@ int main(void)
     console_printf("[wtfos] calculated pclk2 freq=%d MHz\n",
         stm32f429_rcc_get_pclk2_freq());
 
-    GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
+    /* Set this pin high */
+    stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
 
     /* Blinky blinky time */
     while (1) {
-        if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0)) {
+        if (stm32f429_hw_gpio_get_pin(STM32F429_HW_GPIO_BLOCK_GPIOA, 0) == true) {
             if (!button_pressed) {
                 button_pressed = 1;
-                GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
-                GPIO_ToggleBits(GPIOG, GPIO_Pin_n1);
+                stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
+                stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
                 console_puts("[button] pressed!\n");
             }
         } else {
