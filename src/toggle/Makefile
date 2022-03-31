@@ -42,6 +42,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_startup.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc_table.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
 # Testing for now; I haven't implemented a RAM VTOR yet.

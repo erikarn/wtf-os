@@ -6,6 +6,7 @@
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
 #include "bsp/local/stm32f4/stm32f429_hw_rcc.h"
+#include "bsp/local/stm32f4/stm32f429_hw_rcc_defs.h"
 
 #include "kern/console/console.h"
 #include "core/platform.h"
@@ -60,10 +61,8 @@ setup_usart1(void)
 
     /*
      * Enable clock for USART1 peripheral.
-     *
-     * This is on APB2/PCLK2.
      */
-    RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
+    stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_USART1, true);
     pclk2 = stm32f429_rcc_get_pclk2_freq();
 
     /* USART1 setup itself, it's on APB2 */
