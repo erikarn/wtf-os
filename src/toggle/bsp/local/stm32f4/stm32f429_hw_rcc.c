@@ -13,10 +13,18 @@
 
 static const uint8_t AHBPrescTable[16] =
     { 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9 };
+static const uint8_t APBPrescTable[16] =
+    { 0, 0, 0, 0, 1, 2, 3, 4, 1, 2, 3, 4, 6, 7, 8, 9 };
 
 /*
  * This is the root clock / pll / peripheral configuration block
  * for the STM32F429 SoCs.
+ *
+ * There's plenty of extra fun stuff to implement here when one
+ * wishes to start playing with all the more complicated peripherals
+ * that need variable clocks (like i2s), and some of the more fun
+ * lower power modes and clock sources.  For now however, let's
+ * focus on bootstrapping.
  */
 
 /*
@@ -30,6 +38,11 @@ static const uint8_t AHBPrescTable[16] =
 #define	PLL_N		360
 #define	PLL_P		2
 
+/**
+ * Get the system core clock in Hz.
+ *
+ * @retval Core clock frequency in Hz.
+ */
 uint32_t
 stm32f429_get_system_core_clock(void)
 {
@@ -85,7 +98,56 @@ stm32f429_get_system_core_clock(void)
 	    STM32F429_RCC_REG_RCC_CFGR),
 	    STM32F429_RCC_REG_RCC_CFGR_HPRE)];
 
-	/* Update system core clock w/ prescaler */
+	/* Update system core clock (HCLK) w/ prescaler */
 	SystemCoreClock >>= tmp;
 	return SystemCoreClock;
 }
+
+/**
+ * Get PCLK1 frequency (AHB1).
+ *
+ * @retval Frequency in Hz.
+ */
+uint32_t
+stm32f429_rcc_get_pclk1_freq(void)
+{
+	uint32_t hclk_freq, reg, pre;
+
+	hclk_freq = stm32f429_get_system_core_clock();
+
+	reg = os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_CFGR);
+	pre = APBPrescTable[MS(reg, STM32F429_RCC_REG_RCC_CFGR_PPRE1)];
+
+	return (hclk_freq >> pre);
+}
+
+/**
+ * Get PCLK2 frequency (AHB2).
+ *
+ * @retval Frequency in Hz.
+ */
+uint32_t
+stm32f429_rcc_get_pclk2_freq(void)
+{
+	uint32_t hclk_freq, reg, pre;
+
+	hclk_freq = stm32f429_get_system_core_clock();
+
+	reg = os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_CFGR);
+	pre = APBPrescTable[MS(reg, STM32F429_RCC_REG_RCC_CFGR_PPRE2)];
+
+	return (hclk_freq >> pre);
+}
+
+
+/**
+ * Enable/disable the given peripheral.
+ */
+
+/**
+ * Reset the given peripheral.
+ */
+
+/**
+ * Put the given peripheral into a low power state.
+ */

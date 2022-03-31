@@ -56,20 +56,18 @@ setup_usart1_gpios(void)
 static void
 setup_usart1(void)
 {
-    RCC_ClocksTypeDef clks;
+    uint32_t pclk2;
 
     /*
-     * Enable clock for USART1 peripheral
+     * Enable clock for USART1 peripheral.
+     *
+     * This is on APB2/PCLK2.
      */
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_USART1, ENABLE);
-
-    /*
-     * Get the clock frequencies from the RCC block.
-     */
-    RCC_GetClocksFreq(&clks);
+    pclk2 = stm32f429_rcc_get_pclk2_freq();
 
     /* USART1 setup itself, it's on APB2 */
-    stm32f429_uart_init(115200, clks.PCLK2_Frequency);
+    stm32f429_uart_init(115200, pclk2);
 }
 
 /* Setup LED GPIOs */
@@ -137,7 +135,6 @@ USART1_IRQHandler(void)
 int main(void)
 {
     volatile uint8_t button_pressed = 0;
-    RCC_ClocksTypeDef clks;
 
     /* Setup initial hardware before we setup console, echo etc */
 
@@ -163,16 +160,16 @@ int main(void)
     /* (yeah a hack for now) */
     stm32f429_uart_enable_rx_intr();
 
-    /* for something to printf */
-    RCC_GetClocksFreq(&clks);
-    console_printf("[wtfos] pclk1 freq=%d MHz, pclk2 freq=%d MHz\n",
-        clks.PCLK1_Frequency,
-        clks.PCLK2_Frequency);
     console_printf("[wtfos] calculated core freq=%d MHz\n",
         stm32f429_get_system_core_clock());
+    console_printf("[wtfos] calculated pclk1 freq=%d MHz\n",
+        stm32f429_rcc_get_pclk1_freq());
+    console_printf("[wtfos] calculated pclk2 freq=%d MHz\n",
+        stm32f429_rcc_get_pclk2_freq());
 
     GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
-#if 1
+
+    /* Blinky blinky time */
     while (1) {
         if (GPIO_ReadInputDataBit(GPIOA, GPIO_Pin_0)) {
             if (!button_pressed) {
@@ -185,12 +182,4 @@ int main(void)
             button_pressed = 0;
         }
     }
-#endif
-#if 0
-    while (1) {
-        GPIO_ToggleBits(GPIOG, GPIO_Pin_n0);
-        GPIO_ToggleBits(GPIOG, GPIO_Pin_n1);
-        stm32f429_uart_tx_byte('a');
-    }
-#endif
 }
