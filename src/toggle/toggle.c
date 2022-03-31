@@ -38,7 +38,8 @@ setup_usart1_gpios(void)
     GPIO_InitTypeDef GPIO_InitStruct;
 
     // Enable clock for GPIOA
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOA, true);
+
     /**
     * Tell pins PA9 and PA10 which alternating function you will use
     * @important Make sure, these lines are before pins configuration!
@@ -80,7 +81,7 @@ setup_led_gpios(void)
     stm32f429_hw_flash_enable_dcache();
 
     // Setup GPIO pins for LEDs
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOG, ENABLE);
+    stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOG, true);
 
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_n0;
     GPIO_InitDef.GPIO_Mode = GPIO_Mode_OUT;
@@ -103,7 +104,7 @@ setup_button_gpios(void)
     GPIO_InitTypeDef GPIO_InitDef;
 
     // Setup GPIO pin for button input
-    RCC_AHB1PeriphClockCmd(RCC_AHB1Periph_GPIOA, ENABLE);
+    stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOA, true);
 
     GPIO_InitDef.GPIO_Pin = GPIO_Pin_0;
     GPIO_InitDef.GPIO_Mode = GPIO_Mode_IN;
