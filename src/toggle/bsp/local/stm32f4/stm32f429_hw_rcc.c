@@ -1,6 +1,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <os/reg.h>
 #include <os/bitmask.h>
@@ -10,6 +11,7 @@
 #include <stm32f4/stm32f429_hw_rcc_reg.h>
 
 #include <stm32f4/stm32f429_hw_rcc.h>
+#include <stm32f4/stm32f429_hw_rcc_table.h>
 
 static const uint8_t AHBPrescTable[16] =
     { 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 3, 4, 6, 7, 8, 9 };
@@ -29,7 +31,7 @@ static const uint8_t APBPrescTable[16] =
 
 /*
  * Hard-coded values for the stm32f429 discovery board.
- * Need to go and un-hardcode these and put them in a config file somewhere.
+ * XXX TODO Need to go and un-hardcode these and put them in a config file!
  */
 #define	HSE_VALUE	8000000
 #define	HSI_VALUE	16000000
@@ -141,12 +143,44 @@ stm32f429_rcc_get_pclk2_freq(void)
 
 
 /**
- * Enable/disable the given peripheral.
+ * Enable/disable the given peripheral clock.
+ *
+ * @param[in] periph Peripheral ID
+ * @retval true if successful, false if invalid peripheral ID
  */
+bool
+stm32f429_rcc_peripheral_enable(stm32f429_rcc_peripheral_name_t periph,
+    bool enable)
+{
+	const struct stm32f429_rcc_table_entry *pe;
+	uint32_t reg;
+
+	pe = stm32f429_rcc_table_get_peripheral(periph);
+	if (pe == NULL) {
+		return (false);
+	}
+
+	reg = os_reg_read32(RCC_BASE, pe->rcc_clken_reg);
+	if (enable) {
+		reg |= pe->rcc_clken_mask;
+	} else {
+		reg &= ~pe->rcc_clken_mask;
+	}
+	os_reg_write32(RCC_BASE, pe->rcc_clken_reg, reg);
+
+	return (true);
+}
 
 /**
  * Reset the given peripheral.
  */
+bool
+stm32f429_rcc_peripheral_reset(stm32f429_rcc_peripheral_name_t periph,
+    bool reset)
+{
+	/* XXX TODO */
+	return (false);
+}
 
 /**
  * Put the given peripheral into a low power state.
