@@ -3,6 +3,7 @@
 
 #include <core/platform.h>
 #include <core/arm_m4_nvic.h>
+#include <hw/types.h>
 #include <asm/asm_defs.h>
 
 #include <kern/console/console.h>
@@ -68,14 +69,47 @@ platform_irq_disable(uint32_t irq)
 	arm_m4_nvic_disable_irq(irq);
 }
 
+/**
+ * Directly enable CPU interrupts, without any tracking of the CPU interrupt
+ * mask.
+ */
 void
 platform_cpu_irq_enable(void)
 {
 	enable_irq();
 }
 
+/**
+ * Directly disable CPU interrupts, without any tracking of the CPU interrupt
+ * mask.
+ */
 void
 platform_cpu_irq_disable(void)
 {
 	disable_irq();
+}
+
+/**
+ * Disable IRQs, save the current mask so it's restored to what it was.
+ */
+irq_save_t
+platform_cpu_irq_disable_save(void)
+{
+	irq_save_t mask;
+
+	mask = (irq_save_t) get_primask();
+	disable_irq();
+	return (mask);
+}
+
+/**
+ * Re-enable IRQs using the previous interrupt mask.
+ *
+ * If interrupts were disabled then they'll stay disabled.
+ */
+void
+platform_cpu_irq_enable_restore(irq_save_t mask)
+{
+
+	set_primask(mask);
 }

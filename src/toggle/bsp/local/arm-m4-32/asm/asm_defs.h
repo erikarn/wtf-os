@@ -55,5 +55,18 @@ __attribute__( ( always_inline ) ) static inline uint32_t get_apsr(void)
 	return (result);
 }
 
+__attribute__( ( always_inline ) ) static inline uint32_t get_primask(void)
+{
+	uint32_t result;
+
+	asm volatile ("MRS %0, primask" : "=r" (result) );
+	return(result);
+}
+
+__attribute__( ( always_inline ) ) static inline void
+set_primask(uint32_t priMask)
+{
+	asm volatile ("MSR primask, %0" : : "r" (priMask) : "memory");
+}
 
 #endif /* __ASM_DEFS_H__ */
