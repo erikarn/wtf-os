@@ -29,6 +29,11 @@ __attribute__( ( always_inline ) ) static inline void disable_irq(void)
 }
 
 // WFI - wait for interrupt
+__attribute__( ( always_inline ) ) static inline void enter_wfi(void)
+{
+	asm volatile ("wfi");
+}
+
 // WFE - wait for event
 // SEV - send event
 

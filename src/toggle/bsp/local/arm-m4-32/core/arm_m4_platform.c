@@ -37,6 +37,12 @@ platform_cpu_init(void)
 	arm_m4_nvic_init();
 }
 
+void
+platform_cpu_idle(void)
+{
+	enter_wfi();
+}
+
 /**
  * Platform specific IRQ handling.
  *
