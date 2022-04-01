@@ -9,6 +9,7 @@
 #include "bsp/local/stm32f4/stm32f429_hw_rcc_defs.h"
 #include "bsp/local/stm32f4/stm32f429_hw_gpio.h"
 #include "bsp/local/stm32f4/stm32f429_hw_exti.h"
+#include "bsp/local/stm32f4/stm32f429_hw_syscfg.h"
 
 #include "kern/console/console.h"
 #include "core/platform.h"
@@ -181,14 +182,15 @@ int main(void)
      * Use PA0 -> EXTINT_0, set it up as triggering on rising edge only.
      */
 
-    /* XXX platform IRQ for EXTINT_0 */
-    /*
-     * Note: by default PA0 is hooked up to EXTINT0,
-     * or we'd have to poke syscfg
-     */
-    stm32f429_hw_exti_set_intr_type(0, true, false); // Rising edge only
+    /* Configure EXTI 0 to be GPIOA0 */
+    stm32f429_hw_syscfg_config_exti_mux(0,
+        STM32F429_HW_SYSCTL_EXTI_BLOCK_GPIOA);
+    /* Configure EXTI0 interrupt for rising edge only */
+    stm32f429_hw_exti_set_intr_type(0, true, false);
+    /* Enable EXTI0 interrupt in the EXTI block */
     stm32f429_hw_exti_enable_interrupt(0, true);
-    platform_irq_enable(6); // system IRQ for EXTINT_0 is NVIC interrupt 6
+    /* Enable EXTI0 interrupt in the NVIC block (irq 6) */
+    platform_irq_enable(6);
 
     /* Idle loop, do everything in interrupts */
     while (1) {
