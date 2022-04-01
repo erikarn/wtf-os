@@ -42,6 +42,8 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_startup.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc_table.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_gpio.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_syscfg.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_exti.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
 # Testing for now; I haven't implemented a RAM VTOR yet.
@@ -81,7 +83,7 @@ toggle.elf: $(C_OBJS) $(S_OBJS)
 	$(OBJCOPY) -O binary toggle.elf toggle.bin
 
 flash: toggle
-	st-flash write toggle.bin 0x8000000
+	st-flash --connect-under-reset write toggle.bin 0x8000000
 
 clean:
 	rm -f $(C_OBJS) $(S_OBJS)

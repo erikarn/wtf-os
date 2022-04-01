@@ -8,6 +8,7 @@
 #include "bsp/local/stm32f4/stm32f429_hw_rcc.h"
 #include "bsp/local/stm32f4/stm32f429_hw_rcc_defs.h"
 #include "bsp/local/stm32f4/stm32f429_hw_gpio.h"
+#include "bsp/local/stm32f4/stm32f429_hw_exti.h"
 
 #include "kern/console/console.h"
 #include "core/platform.h"
@@ -125,9 +126,20 @@ USART1_IRQHandler(void)
 	}
 }
 
+/**
+ * External interrupt 0, used for GPIOA0 and the input button press.
+ */
+void
+EXTI0_IRQHandler(void)
+{
+	console_printf("[button] pressed!\n");
+	stm32f429_hw_exti_ack_pending_interrupt(0);
+	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
+	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
+}
+
 int main(void)
 {
-    volatile uint8_t button_pressed = 0;
 
     /* Setup initial hardware before we setup console, echo etc */
 
@@ -160,20 +172,26 @@ int main(void)
     console_printf("[wtfos] calculated pclk2 freq=%d MHz\n",
         stm32f429_rcc_get_pclk2_freq());
 
-    /* Set this pin high */
+    /* Set this pin high so we get toggling LEDs */
     stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
 
-    /* Blinky blinky time */
+    /*
+     * Do some external interrupt experimenting.
+     *
+     * Use PA0 -> EXTINT_0, set it up as triggering on rising edge only.
+     */
+
+    /* XXX platform IRQ for EXTINT_0 */
+    /*
+     * Note: by default PA0 is hooked up to EXTINT0,
+     * or we'd have to poke syscfg
+     */
+    stm32f429_hw_exti_set_intr_type(0, true, false); // Rising edge only
+    stm32f429_hw_exti_enable_interrupt(0, true);
+    platform_irq_enable(6); // system IRQ for EXTINT_0 is NVIC interrupt 6
+
+    /* Idle loop, do everything in interrupts */
     while (1) {
-        if (stm32f429_hw_gpio_get_pin(STM32F429_HW_GPIO_BLOCK_GPIOA, 0) == true) {
-            if (!button_pressed) {
-                button_pressed = 1;
-                stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
-                stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
-                console_puts("[button] pressed!\n");
-            }
-        } else {
-            button_pressed = 0;
-        }
+        platform_cpu_idle();
     }
 }
