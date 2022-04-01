@@ -58,6 +58,8 @@
 
 /* APB2 peripherals */
 #define USART1_BASE           (APB2PERIPH_BASE + 0x1000UL)
+#define SYSCFG_BASE           (APB2PERIPH_BASE + 0x3800UL)
+#define EXTI_BASE             (APB2PERIPH_BASE + 0x3C00UL)
 
 /*!< AHB1 peripherals */
 #define GPIOA_BASE            (AHB1PERIPH_BASE + 0x0000UL)
