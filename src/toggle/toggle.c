@@ -11,8 +11,12 @@
 #include "bsp/local/stm32f4/stm32f429_hw_exti.h"
 #include "bsp/local/stm32f4/stm32f429_hw_syscfg.h"
 
+
 #include "kern/console/console.h"
+
 #include "core/platform.h"
+#include "core/arm_m4_systick.h"
+#include "core/arm_m4_nvic.h"
 
 static void
 cons_putc(char c)
@@ -137,6 +141,14 @@ EXTI0_IRQHandler(void)
 	stm32f429_hw_exti_ack_pending_interrupt(0);
 	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
 	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
+        arm_m4_systick_set_counter_and_start(10485760);
+}
+
+void
+SysTick_Handler(void)
+{
+	console_printf("[systick] triggered!\n");
+	arm_m4_systick_stop_counting();
 }
 
 int main(void)
@@ -172,6 +184,8 @@ int main(void)
         stm32f429_rcc_get_pclk1_freq());
     console_printf("[wtfos] calculated pclk2 freq=%d MHz\n",
         stm32f429_rcc_get_pclk2_freq());
+    console_printf("[wtfos] tenms systick = 0x%08x\n",
+        arm_m4_systick_get_tenms_calib());
 
     /* Set this pin high so we get toggling LEDs */
     stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
@@ -191,6 +205,10 @@ int main(void)
     stm32f429_hw_exti_enable_interrupt(0, true);
     /* Enable EXTI0 interrupt in the NVIC block (irq 6) */
     platform_irq_enable(6);
+
+    // systick test
+    arm_m4_systick_enable_interrupt(true);
+    arm_m4_systick_set_counter_and_start(10485760);
 
     /* Idle loop, do everything in interrupts */
     while (1) {

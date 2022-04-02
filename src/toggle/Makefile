@@ -51,6 +51,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
 
 # And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
