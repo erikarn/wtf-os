@@ -1,4 +1,3 @@
-
 .syntax unified
 .cpu cortex-m4
 .fpu softvfp
@@ -251,7 +250,7 @@ g_pfnVectors:
 	.thumb_set 	PendSV_Handler,Default_Exception_Handler
 
 	.weak		SysTick_Handler
-	.thumb_set 	SysTick_Handler,Default_Interrupt_Handler
+	.thumb_set 	SysTick_Handler,Default_Exception_Handler
 
 	.weak		WWDG_IRQHandler
 	.thumb_set 	WWDG_IRQHandler,Default_Interrupt_Handler
