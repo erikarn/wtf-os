@@ -1,8 +1,10 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #include <core/platform.h>
 #include <core/arm_m4_nvic.h>
+#include <core/arm_m4_systick.h>
 #include <hw/types.h>
 #include <asm/asm_defs.h>
 
@@ -36,6 +38,8 @@ platform_cpu_init(void)
 
 	/* Setup interrupt controller */
 	arm_m4_nvic_init();
+	/* and system tick controller */
+	arm_m4_systick_init();
 }
 
 void
