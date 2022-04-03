@@ -39,6 +39,9 @@
 #include "core/arm_m4_systick.h"
 #include "core/arm_m4_nvic.h"
 
+/* XXX */
+extern void arm_m4_task_switch();
+
 static void
 cons_putc(char c)
 {
@@ -169,13 +172,19 @@ void
 SysTick_Handler(void)
 {
 	console_printf("[systick] triggered!\n");
-	arm_m4_systick_stop_counting();
+	//arm_m4_systick_stop_counting();
+	arm_m4_exception_set_pendsv();
+}
+
+__attribute__((naked)) void
+PendSV_Handler(void)
+{
+	asm("b arm_m4_task_switch");
 }
 
 int
 main(void)
 {
-
     /* Setup initial hardware before we setup console, echo etc */
 
     setup_led_gpios();
@@ -231,7 +240,6 @@ main(void)
     // systick test
     arm_m4_systick_enable_interrupt(true);
     arm_m4_systick_set_counter_and_start(10485760);
-
 
     // Enable CPU interrupts
     platform_cpu_irq_enable();

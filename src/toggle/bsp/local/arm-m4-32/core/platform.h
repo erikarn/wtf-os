@@ -21,4 +21,6 @@ extern	void platform_cpu_irq_enable_restore(irq_save_t mask);
 extern	stack_addr_t platform_task_stack_setup(stack_addr_t stack,
 	    void *entry_point, void *param);
 
+extern	void arm_m4_exception_set_pendsv(void);
+
 #endif	/* __ARM_M4_PLATFORM_H__ */

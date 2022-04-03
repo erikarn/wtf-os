@@ -52,6 +52,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
 
 # And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
@@ -74,9 +75,11 @@ ASFLAGS = $(GEN_FLAGS)
 
 C_SRCS = $(filter %.c, $(SRCS))
 S_SRCS = $(filter %.s, $(SRCS))
+SS_SRCS = $(filter %.S, $(SRCS))
 
 C_OBJS = $(C_SRCS:%.c=%.o)
 S_OBJS = $(S_SRCS:%.s=%.o)
+SS_OBJS = $(SS_SRCS:%.S=%.o)
 
 .PHONY: toggle
 
@@ -84,8 +87,8 @@ all: toggle
 
 toggle: toggle.elf
 
-toggle.elf: $(C_OBJS) $(S_OBJS)
-	$(CC) $(CFLAGS) $(C_OBJS) $(S_OBJS) -o $@
+toggle.elf: $(C_OBJS) $(S_OBJS) $(SS_OBJS)
+	$(CC) $(CFLAGS) $(C_OBJS) $(S_OBJS) $(SS_OBJS) -o $@
 	$(OBJCOPY) -O binary toggle.elf toggle.bin
 
 flash: toggle

@@ -17,7 +17,12 @@ struct kern_task *current_task = NULL;
  * Idle task
  */
 static struct kern_task idle_task;
-static uint8_t kern_idle_stack[128] __attribute__ ((aligned(8))) = { 0 };
+/* Note: 256 bytes for now; I think we're saving VFP registers */
+static uint8_t kern_idle_stack[256] __attribute__ ((aligned(8))) = { 0 };
+
+static struct kern_task test_task;
+/* Note: 256 bytes for now; I think we're saving VFP registers */
+static uint8_t kern_test_stack[256] __attribute__ ((aligned(8))) = { 0 };
 
 /**
  * Initialise the given task structure.
@@ -65,7 +70,10 @@ kern_task_init(struct kern_task *task, void *entry_point,
 void
 kern_task_select(void)
 {
-	current_task = &idle_task;
+	if (current_task == &idle_task)
+		current_task = &test_task;
+	else
+		current_task = &idle_task;
 }
 
 static void
@@ -78,9 +86,22 @@ kern_idle_task_fn(void)
 	}
 }
 
+static void
+kern_test_task_fn(void)
+{
+	console_printf("[test] started!\n");
+	while (1) {
+		console_printf("[test] entering idle!\n");
+		platform_cpu_idle();
+	}
+}
+
+
 void
 kern_task_setup(void)
 {
 	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack));
+	kern_task_init(&test_task, kern_test_task_fn, "ktest",
+	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
 }

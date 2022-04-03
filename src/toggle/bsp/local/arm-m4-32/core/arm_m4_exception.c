@@ -73,3 +73,20 @@ _arm_m4_default_exception_handler(void)
 
 	exception_spin();
 }
+
+
+/**
+ * Set the pending SV bit to trigger an SV exception.
+ *
+ * This must be called with interrupts disabled so it can be done atomically.
+ */
+void
+arm_m4_exception_set_pendsv(void)
+{
+	uint32_t val;
+
+	val = os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_ICSR);
+	val |= ARM_M4_SCB_REG_ICSR_PENDSVSET;
+	os_reg_write32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_ICSR, val);
+}
+
