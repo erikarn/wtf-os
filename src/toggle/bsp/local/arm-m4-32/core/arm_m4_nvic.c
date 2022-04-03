@@ -134,17 +134,52 @@ arm_m4_nvic_get_pending_irq(uint32_t irq)
  * Set the IRQ priority.
  */
 void
-arm_m4_nvic_set_priority(uint32_t irq, uint32_t priority)
+arm_m4_nvic_set_priority(uint32_t irq, uint8_t priority)
 {
-	/* XXX TBD */
+	uint32_t ro, vo, val;
+
+	if (irq >= ARM_M4_NVIC_NUM_INTERRUPTS) {
+		return;
+	}
+
+	ro = irq / 4;
+	vo = irq % 4;
+
+	/*
+	 * Each field is 8 bits wide; there's four to each
+	 * register.
+	 */
+	val = os_reg_read32(ARM_M4_NVIC_REG_BASE,
+	    ARM_M4_NVIC_REG_IPR0 + (ro * 4));
+	val |= ((priority & 0xff) << (vo * 8));
+	os_reg_write32(ARM_M4_NVIC_REG_BASE,
+	    ARM_M4_NVIC_REG_IPR0 + (ro * 4), val);
+
 }
 
 /**
  * Get the IRQ priority.
  */
-uint32_t
+uint8_t
 arm_m4_nvic_get_priority(uint32_t irq)
 {
-	/* XXX TBD */
+	uint32_t ro, vo, val;
+
+	if (irq >= ARM_M4_NVIC_NUM_INTERRUPTS) {
+		return (0);
+	}
+
+	ro = irq / 4;
+	vo = irq % 4;
+
+	/*
+	 * Each field is 8 bits wide; there's four to each
+	 * register.
+	 */
+	val = os_reg_read32(ARM_M4_NVIC_REG_BASE,
+	    ARM_M4_NVIC_REG_IPR0 + (ro * 4));
+
+	return ((val >> (vo * 8)) & 0xff);
+
 	return (0);
 }

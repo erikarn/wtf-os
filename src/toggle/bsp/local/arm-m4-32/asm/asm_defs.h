@@ -69,4 +69,19 @@ set_primask(uint32_t priMask)
 	asm volatile ("MSR primask, %0" : : "r" (priMask) : "memory");
 }
 
+__attribute__( ( always_inline ) ) static inline uint32_t get_basepri(void)
+{
+	uint32_t result;
+
+	asm volatile ("MRS %0, basepri" : "=r" (result) );
+	return(result);
+}
+
+__attribute__( ( always_inline ) ) static inline void
+set_basepri(uint32_t basepri)
+{
+	asm volatile ("MSR basepri, %0" : : "r" (basepri) : "memory");
+}
+
+
 #endif /* __ASM_DEFS_H__ */
