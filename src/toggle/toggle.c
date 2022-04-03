@@ -171,9 +171,13 @@ EXTI0_IRQHandler(void)
 void
 SysTick_Handler(void)
 {
+	irq_save_t save;
+
 	console_printf("[systick] triggered!\n");
 	//arm_m4_systick_stop_counting();
+	save = platform_cpu_irq_disable_save();
 	arm_m4_exception_set_pendsv();
+	platform_cpu_irq_enable_restore(save);
 }
 
 __attribute__((naked)) void
