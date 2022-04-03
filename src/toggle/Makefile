@@ -56,7 +56,12 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
 # And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c
+SRCS += $(KERN_SUBDIR)/core/task.c
+
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
+SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
+SRCS += $(KERN_SUBDIR)/libraries/string/strnlen.c
+SRCS += $(KERN_SUBDIR)/libraries/string/strlcpy.c
 
 # The top-level program!
 SRCS += toggle.c

@@ -1,3 +1,22 @@
+/*
+ * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-Licence-Identifier: GPL-3.0-or-later
+ */
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -11,8 +30,10 @@
 #include "bsp/local/stm32f4/stm32f429_hw_exti.h"
 #include "bsp/local/stm32f4/stm32f429_hw_syscfg.h"
 
+#include "hw/types.h"
 
 #include "kern/console/console.h"
+#include "kern/core/task.h"
 
 #include "core/platform.h"
 #include "core/arm_m4_systick.h"
@@ -151,7 +172,8 @@ SysTick_Handler(void)
 	arm_m4_systick_stop_counting();
 }
 
-int main(void)
+int
+main(void)
 {
 
     /* Setup initial hardware before we setup console, echo etc */
@@ -171,12 +193,12 @@ int main(void)
 
     platform_cpu_init();
 
-    // Enable CPU interrupts
-    platform_cpu_irq_enable();
-
     /* do post CPU init interrupt enable for things like USART */
     /* (yeah a hack for now) */
     stm32f429_uart_enable_rx_intr();
+
+    /* Setup task system, idle task */
+    kern_task_setup();
 
     console_printf("[wtfos] calculated core freq=%d MHz\n",
         stm32f429_get_system_core_clock());
@@ -209,6 +231,10 @@ int main(void)
     // systick test
     arm_m4_systick_enable_interrupt(true);
     arm_m4_systick_set_counter_and_start(10485760);
+
+
+    // Enable CPU interrupts
+    platform_cpu_irq_enable();
 
     /* Idle loop, do everything in interrupts */
     while (1) {
