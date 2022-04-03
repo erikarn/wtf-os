@@ -2,10 +2,14 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include <os/bit.h>
+#include <os/reg.h>
+
 #include <core/platform.h>
 #include <core/arm_m4_nvic.h>
 #include <core/arm_m4_systick.h>
 #include <hw/types.h>
+#include <hw/scb_defs.h>
 #include <asm/asm_defs.h>
 
 #include <kern/console/console.h>
@@ -29,6 +33,7 @@ extern	uint32_t _sidata;
 void
 platform_cpu_init(void)
 {
+	uint32_t val;
 
 	console_printf("%s: called\n", __func__);
 
@@ -40,11 +45,24 @@ platform_cpu_init(void)
 	arm_m4_nvic_init();
 	/* and system tick controller */
 	arm_m4_systick_init();
+	/* enable lazy FPU saving */
+
+	val = os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_FPCCR);
+	val |= ARM_M4_SCB_REG_FPCCR_LSPEN;
+	val |= ARM_M4_SCB_REG_FPCCR_ASPEN;
+	os_reg_write32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_FPCCR, val);
 }
 
+/**
+ * Enter an interruptable CPU idle state.
+ *
+ * This is called during idle loop operation; it'll either exit because it
+ * wants to or because an interrupt occurs.
+ */
 void
 platform_cpu_idle(void)
 {
+
 	enter_wfi();
 }
 
@@ -118,6 +136,11 @@ platform_cpu_irq_enable_restore(irq_save_t mask)
 	set_primask(mask);
 }
 
+/**
+ * A default return routine that just spins.
+ *
+ * We shouldn't end up here but let's get noticed if we do.
+ */
 static void
 platform_task_exit(void)
 {
@@ -128,6 +151,25 @@ platform_task_exit(void)
 		;
 }
 
+/**
+ * Setup the stack for a newly created kernel task.
+ *
+ * This populates the given stack frame with enough
+ * information for the M4 to jump /back/ into the task
+ * as if it was a normal context switch.
+ *
+ * The stack address is decremented first before used, just
+ * like the hardware would, so pass in (stack_base+stack_size),
+ * which will initially point to the address AFTER the stack RAM.
+ *
+ * The returned stack address can then be stored in the task struct
+ * as if it had been saved into during an exception.
+ *
+ * @param[in] stack the top of stack, as if this were the SP/MSP.
+ * @param[in] entry_point kernel task entry point to jump to
+ * @param[in] param argument to pass into r0.
+ * @retval stack address as if the hardware had saved execution here
+ */
 stack_addr_t
 platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param)
 {
