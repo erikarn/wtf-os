@@ -53,18 +53,14 @@ struct kern_task {
 	uint8_t pad0;
 
 	/*
-	 * Current signal mask and signal set.
-	 *
-	 * sig_mask is the mask of signals that will result in
-	 * a kern_signal_wait() (or a later syscall from userland)
-	 * continuing.
+	 * Current signal set and mask.
 	 *
 	 * sig_signals is the set of signals that have been set.
 	 * Signals need to be ACKed and cleared or they will allow
 	 * a follow-up kern_signal_wait() to return immediately.
 	 */
-	kern_task_signal_mask_t sig_mask;
-	kern_task_signal_set_t sig_set;
+	volatile kern_task_signal_set_t sig_set;
+	volatile kern_task_signal_mask_t sig_mask;
 };
 
 /**
@@ -91,6 +87,11 @@ extern	void kern_task_select(void);
 extern	struct kern_task * kern_task_lookup(kern_task_id_t task_id);
 
 /**
+ * Turn a task struct into a task id.
+ */
+extern	kern_task_id_t kern_task_to_id(struct kern_task *task);
+
+/**
  * Task reference increment/decrement.
  */
 extern	void kern_task_refcount_inc(struct kern_task *task);
@@ -115,7 +116,7 @@ extern	void kern_task_kill(kern_task_id_t task_id);
 /**
  * Wait for a signal.  Only callable from the tsak itself.
  *
- * @retval 1 if a signal was set (whether we waited or not).
+ * @retval 0 if a signal was set (whether we waited or not).
  * @retval -1 if error.
  */
 extern	int kern_task_wait(kern_task_signal_mask_t sig_mask,
@@ -144,5 +145,8 @@ extern	void kern_task_set_state_locked(kern_task_state_t new_state);
 extern	void kern_task_set_task_state_locked(kern_task_id_t task_id,
 	    kern_task_state_t new_state);
 
+extern	void kern_task_set_sigmask(kern_task_signal_mask_t and_sig_mask,
+	    kern_task_signal_mask_t or_mask);
+extern	kern_task_signal_mask_t kern_task_get_sigmask(void);
 
 #endif	/* __KERN_TASK_H__ */
