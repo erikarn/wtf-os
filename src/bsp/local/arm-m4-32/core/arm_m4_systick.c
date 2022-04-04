@@ -11,6 +11,11 @@
 
 #include <core/arm_m4_systick.h>
 
+#include <kern/core/exception.h>
+#include <kern/console/console.h>
+
+static uint32_t systick_hclk_freq = 0;
+
 /**
  * Perform any cortex-M4 specific NVIC platform initialisation.
  */
@@ -65,6 +70,25 @@ arm_m4_systick_set_counter_and_start(uint32_t counter_val)
 	os_reg_write32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CTRL, val);
 }
 
+void
+arm_m4_systick_set_usec_and_start(uint32_t usec_val)
+{
+	uint64_t tmp;
+
+	if (systick_hclk_freq == 0) {
+		exception_panic("%s: systick_hclk_freq=0");
+	}
+
+	tmp = (uint64_t) usec_val * (uint64_t) systick_hclk_freq;
+	tmp = tmp / 1000000ULL;
+
+	/* Clamp at uint32_t */
+	if (tmp > 0x0ffffffffL)
+		tmp = 0xffffffff;
+
+	arm_m4_systick_set_counter_and_start((uint32_t) tmp);
+}
+
 /**
  * Stop counting.
  */
@@ -88,4 +112,10 @@ arm_m4_systick_get_tenms_calib(void)
 
 	val = os_reg_read32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CALIB);
 	return MS(val, ARM_SYSTICK_REG_STK_CALIB_TENMS);
+}
+
+void
+arm_m4_systick_set_hclk_freq(uint32_t hclk_freq)
+{
+	systick_hclk_freq = hclk_freq;
 }

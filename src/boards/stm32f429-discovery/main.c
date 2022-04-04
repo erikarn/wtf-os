@@ -174,7 +174,7 @@ SysTick_Handler(void)
 {
 	platform_critical_lock_t s;
 
-	console_printf("[systick] triggered!\n");
+	//console_printf("[systick] triggered!\n");
 	//arm_m4_systick_stop_counting();
 	platform_critical_enter(&s);
 	arm_m4_exception_set_pendsv();
@@ -245,8 +245,10 @@ main(void)
     platform_irq_enable(6);
 
     // systick test
+    arm_m4_systick_set_hclk_freq(stm32f429_get_system_core_clock());
     arm_m4_systick_enable_interrupt(true);
-    arm_m4_systick_set_counter_and_start(10485760);
+    // one second systick for now
+    arm_m4_systick_set_usec_and_start(1000 * 1000);
 
     // Enable CPU interrupts
     platform_cpu_irq_enable();

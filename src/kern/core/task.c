@@ -147,14 +147,16 @@ kern_idle_task_fn(void)
 
 	console_printf("[idle] started!\n");
 	while (1) {
-		console_printf("[idle] entering idle!\n");
+//		console_printf("[idle] entering idle!\n");
 		platform_cpu_idle();
+
+		// Hack to test sleep/wakeup task stuff
 		count++;
 		if (count == 10) {
 			kern_task_id_t t;
 
 			count = 0;
-			console_printf("[idle] waking up test task!\n");
+//			console_printf("[idle] waking up test task!\n");
 			t = kern_task_to_id(&test_task);
 			kern_task_signal(t, 0x00000001);
 		}
