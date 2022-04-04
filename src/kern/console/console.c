@@ -3,11 +3,13 @@
 #include <stdarg.h>
 
 #include <kern/console/console.h>
+#include <core/lock.h>
 #include <kern/libraries/printf/mini_printf.h>
 
 static char cons_add_crlf = 1;
 
 static struct console_ops *c_ops = NULL;
+static platform_spinlock_t console_lock;
 
 /**
  * Initialise the console subsystem.
@@ -15,6 +17,7 @@ static struct console_ops *c_ops = NULL;
 void
 console_init(void)
 {
+	platform_spinlock_init(&console_lock);
 }
 
 /**
@@ -32,6 +35,14 @@ console_set_ops(struct console_ops *c)
 	c_ops = c;
 }
 
+static void
+_console_putc_locked(char c)
+{
+	if (c_ops != NULL) {
+		c_ops->putc_fn(c);
+	}
+}
+
 /**
  * Write a character to the console.
  *
@@ -40,9 +51,9 @@ console_set_ops(struct console_ops *c)
 void
 console_putc(char c)
 {
-	if (c_ops != NULL) {
-		c_ops->putc_fn(c);
-	}
+	platform_spinlock_lock(&console_lock);
+	_console_putc_locked(c);
+	platform_spinlock_unlock(&console_lock);
 }
 
 /**
@@ -55,13 +66,15 @@ console_putc(char c)
 void
 console_puts(const char *s)
 {
+	platform_spinlock_lock(&console_lock);
 	while (*s != '\0') {
 		if ((cons_add_crlf == 1) && (*s == '\n')) {
-			console_putc('\r');
+			_console_putc_locked('\r');
 		}
-		console_putc(*s);
+		_console_putc_locked(*s);
 		s++;
 	}
+	platform_spinlock_unlock(&console_lock);
 }
 
 /**
@@ -76,13 +89,15 @@ console_putsn(const char *s, size_t len)
 {
 	size_t i;
 
+	platform_spinlock_lock(&console_lock);
 	for (i = 0; i < len; i++) {
 		if ((cons_add_crlf == 1) && (*s == '\n')) {
-			console_putc('\r');
+			_console_putc_locked('\r');
 		}
-		console_putc(*s);
+		_console_putc_locked(*s);
 		s++;
 	}
+	platform_spinlock_unlock(&console_lock);
 }
 
 
