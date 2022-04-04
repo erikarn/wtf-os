@@ -64,6 +64,7 @@ SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strnlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlcpy.c
+SRCS += $(KERN_SUBDIR)/libraries/list/list.c
 
 # The board initialisation routine
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c

@@ -253,7 +253,7 @@ main(void)
 
     // Context switch, begin the fun stuff
     platform_critical_enter(&s);
-    arm_m4_exception_set_pendsv();
+    platform_kick_context_switch();
     platform_critical_exit(&s);
 
     // Now idle, we should either not get here, or not stay here long

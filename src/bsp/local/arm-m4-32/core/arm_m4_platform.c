@@ -190,3 +190,9 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param)
 
 	return (stack_addr_t) (ps);
 }
+
+void
+platform_kick_context_switch(void)
+{
+	arm_m4_exception_set_pendsv();
+}

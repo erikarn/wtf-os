@@ -1,7 +1,12 @@
 #include <stddef.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include <hw/types.h>
+
+#include <kern/libraries/string/string.h>
+#include <kern/libraries/list/list.h>
+#include <kern/libraries/container/container.h>
 
 #include <kern/core/exception.h>
 #include <kern/core/task.h>
@@ -10,10 +15,10 @@
 #include <core/platform.h>
 #include <core/lock.h>
 
-#include <kern/libraries/string/string.h>
-
 struct kern_task *current_task = NULL;
 static platform_spinlock_t kern_task_spinlock;
+
+static struct list_head kern_task_list;
 
 /*
  * Idle task
@@ -39,6 +44,8 @@ kern_task_init(struct kern_task *task, void *entry_point,
 
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
 
+	list_node_init(&task->task_list_node);
+
 	/*
 	 * For now we start with the entry point and kernel stack
 	 * being for the "kernel".  I'll worry about changing this
@@ -51,6 +58,11 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->kern_stack_size = kern_stack_size;
 
 	/*
+	 * Mark this task as idle, we haven't started it running.
+	 */
+	task->cur_state = KERN_TASK_STATE_IDLE;
+
+	/*
 	 * Next we call into the platform code to initialise our
 	 * stack with the above parameters so we can context
 	 * switch /into/ the task when we're ready to run it.
@@ -58,6 +70,13 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->stack_top = platform_task_stack_setup(
 	    task->kern_stack + kern_stack_size,
 	    entry_point, NULL);
+
+	/*
+	 * Last, add it to the global list of tasks.
+	 */
+	platform_spinlock_lock(&kern_task_spinlock);
+	list_add_tail(&kern_task_list, &task->task_list_node);
+	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
 /*
@@ -65,41 +84,159 @@ kern_task_init(struct kern_task *task, void *entry_point,
  *
  * This is called by the platform task switching code to select
  * a new task to run.
- *
- * It's inspired by how FreeRTOS does its task switching whilst
- * I stand up something.
  */
 void
 kern_task_select(void)
 {
-	if (current_task == &idle_task)
-		current_task = &test_task;
-	else
+	struct kern_task *task;
+	struct list_node *node;
+
+	/*
+	 * Walk the list of tasks, looking for the first one that
+	 * is awake.  If we can't find one that's ready then
+	 * we will schedule the idle task.
+	 */
+	platform_spinlock_lock(&kern_task_spinlock);
+	node = kern_task_list.head;
+	while (node != NULL) {
+		task = container_of(node, struct kern_task, task_list_node);
+		if (task == &idle_task) {
+			goto next;
+		}
+
+		/* First task that is ready to run, we run */
+		/* Yeah yeah, no priorities, etc */
+		if (task->cur_state == KERN_TASK_STATE_READY)
+			break;
+next:
+		node = node->next;
+	}
+
+	/* Update this task to be ready to run again */
+	if (current_task->cur_state == KERN_TASK_STATE_RUNNING)
+		current_task->cur_state = KERN_TASK_STATE_READY;
+
+	/* Update current task */
+	if (node != NULL) {
+		current_task = task;
+		/*
+		 * Move to the end of the list for now, so other tasks
+		 * can run.
+		 *
+		 * Once this /works/ at all, it should be replaced with
+		 * a sleep list, run list and task list, and we reorder
+		 * the runlist/sleep list instead of the global list;
+		 * and actually care about priorities too.
+		 */
+		list_delete(&kern_task_list, node);
+		list_add_tail(&kern_task_list, node);
+	} else {
 		current_task = &idle_task;
+	}
+
+	/* Mark it as running */
+	current_task->cur_state = KERN_TASK_STATE_RUNNING;
+
+	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
 static void
 kern_idle_task_fn(void)
 {
-	kern_task_signal_set_t sig;
+	int count = 0;
 
 	console_printf("[idle] started!\n");
 	while (1) {
 		console_printf("[idle] entering idle!\n");
-		(void) kern_task_wait(0xffffffff, &sig);
 		platform_cpu_idle();
+		count++;
+		if (count == 10) {
+			kern_task_id_t t;
+
+			count = 0;
+			console_printf("[idle] waking up test task!\n");
+			t = kern_task_to_id(&test_task);
+			kern_task_signal(t, 0x00000001);
+		}
 	}
 }
 
 static void
 kern_test_task_fn(void)
 {
+	kern_task_signal_set_t sig;
+
 	console_printf("[test] started!\n");
 
 	kern_task_set_sigmask(0x11111111, 0x00000001);
 	while (1) {
-		console_printf("[test] entering idle!\n");
-		platform_cpu_idle();
+		console_printf("[test] **** entering wait!\n");
+		(void) kern_task_wait(0xffffffff, &sig);
+//		console_printf("[test] **** entering idle!\n");
+//		platform_cpu_idle();
+	}
+}
+
+/**
+ * Update the given task state and potentially reschedule things
+ * to run if needed.
+ */
+static void
+_kern_task_set_state_locked(struct kern_task *task,
+    kern_task_state_t new_state)
+{
+	bool do_ctx = false;
+
+	//console_printf("task %s state %d -> %d\n", task->task_name, task->cur_state, new_state);
+
+	/* Update state, only do work if the state hasn't changed */
+	if (task->cur_state == new_state)
+		return;
+
+	task->cur_state = new_state;
+
+	/*
+	 * Note: no multiple lists yet!
+	 */
+
+	switch (task->cur_state) {
+	case KERN_TASK_STATE_SLEEPING:
+		list_delete(&kern_task_list, &task->task_list_node);
+		list_add_tail(&kern_task_list, &task->task_list_node);
+		do_ctx = true;
+		break;
+	case KERN_TASK_STATE_READY:
+		/*
+		 * XXX TODO: we only really need to context switch if
+		 * this task has a higher priority than the one currently
+		 * running.  For now let's just not and let the scheduler
+		 * pick it up.
+		 */
+		list_delete(&kern_task_list, &task->task_list_node);
+		list_add_head(&kern_task_list, &task->task_list_node);
+		do_ctx = false;
+		break;
+	case KERN_TASK_STATE_DYING:
+		/* XXX TODO */
+		console_printf("[task] taskptr 0x%x todo state DYING\n",
+		    task);
+		task->cur_state = KERN_TASK_STATE_SLEEPING;
+		do_ctx = true;
+		break;
+	case KERN_TASK_STATE_RUNNING:
+	default:
+		console_printf("[task] taskptr 0x%x unhandled state %d\n",
+		    task, task->cur_state);
+		break;
+	}
+
+	/*
+	 * Remember, this won't DO the context switch until the critical
+	 * section / spinlock is finished.  It's just requesting that
+	 * we do a context switch soon.
+	 */
+	if (do_ctx) {
+		platform_kick_context_switch();
 	}
 }
 
@@ -107,11 +244,17 @@ void
 kern_task_setup(void)
 {
 	platform_spinlock_init(&kern_task_spinlock);
+	list_head_init(&kern_task_list);
 
+	/* Idle task will be magically made ready to run */
 	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack));
+
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
+	platform_spinlock_lock(&kern_task_spinlock);
+	_kern_task_set_state_locked(&test_task, KERN_TASK_STATE_READY);
+	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
 static struct kern_task *
@@ -120,7 +263,7 @@ _kern_task_lookup_locked(kern_task_id_t task_id)
 	struct kern_task *task;
 
 	task = (struct kern_task *) (uintptr_t) task_id;
-	task->refcount++;
+	kern_task_refcount_inc(task);
 	return (task);
 }
 
@@ -152,20 +295,6 @@ void
 kern_task_refcount_dec(struct kern_task *task)
 {
 	task->refcount--;
-}
-
-static void
-_kern_task_set_state_locked(struct kern_task *task,
-    kern_task_state_t new_state)
-{
-	/* Update state, only do work if the state hasn't changed */
-	if (task->cur_state == new_state)
-		return;
-
-	task->cur_state = new_state;
-
-	/* XXX TODO: need to shift it to different task lists */
-	/* XXX TODO: may need to signal a context switch */
 }
 
 void
@@ -276,9 +405,9 @@ _kern_task_state_valid_locked(struct kern_task *task)
 static void
 _kern_task_wakeup_locked(struct kern_task *task)
 {
+	//console_printf("task %s waking up, state is %d\n", task->task_name, task->cur_state);
 	if (task->cur_state == KERN_TASK_STATE_SLEEPING) {
-		_kern_task_set_state_locked(current_task,
-		    KERN_TASK_STATE_READY);
+		_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
 	}
 }
 
@@ -312,6 +441,8 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 	}
 
 	if (! _kern_task_state_valid_locked(task)) {
+		console_printf("invalid state (%d)\n", task->cur_state);
+		kern_task_refcount_dec(task);
 		platform_spinlock_unlock(&kern_task_spinlock);
 		return (-1);
 	}
@@ -327,6 +458,7 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 		 */
 		_kern_task_wakeup_locked(task);
 	}
+	kern_task_refcount_dec(task);
 
 	platform_spinlock_unlock(&kern_task_spinlock);
 

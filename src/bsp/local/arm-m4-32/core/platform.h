@@ -22,5 +22,6 @@ extern	stack_addr_t platform_task_stack_setup(stack_addr_t stack,
 	    void *entry_point, void *param);
 
 extern	void arm_m4_exception_set_pendsv(void);
+extern	void platform_kick_context_switch(void);
 
 #endif	/* __ARM_M4_PLATFORM_H__ */

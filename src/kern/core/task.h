@@ -1,12 +1,15 @@
 #ifndef	__KERN_TASK_H__
 #define	__KERN_TASK_H__
 
+#include <kern/libraries/list/list.h>
+
 typedef enum {
 	KERN_TASK_STATE_NONE = 0,
 	KERN_TASK_STATE_SLEEPING = 1,
 	KERN_TASK_STATE_READY = 2,
 	KERN_TASK_STATE_RUNNING = 3,
 	KERN_TASK_STATE_DYING = 4,
+	KERN_TASK_STATE_IDLE = 5,
 } kern_task_state_t;
 
 typedef uint32_t kern_task_signal_mask_t;
@@ -38,6 +41,8 @@ struct kern_task {
 	stack_addr_t kern_stack;
 	int kern_stack_size;
 	void *kern_entry_point;
+
+	struct list_node task_list_node;
 
 	kern_task_state_t cur_state;
 
