@@ -15,6 +15,11 @@ typedef struct platform_critical_lock {
 	irq_save_t	irq;
 } platform_critical_lock_t;
 
+static inline void
+platform_spinlock_init(platform_spinlock_t *s)
+{
+	s->irq = 0;
+}
 
 /**
  * Acquire a spinlock.

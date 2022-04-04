@@ -8,6 +8,7 @@
 #include <kern/console/console.h>
 
 #include <core/platform.h>
+#include <core/lock.h>
 
 #include <kern/libraries/string/string.h>
 
@@ -96,7 +97,6 @@ kern_test_task_fn(void)
 	}
 }
 
-
 void
 kern_task_setup(void)
 {
@@ -104,4 +104,97 @@ kern_task_setup(void)
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack));
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
+}
+
+static struct kern_task *
+_kern_task_lookup_locked(kern_task_id_t task_id)
+{
+	struct kern_task *task;
+
+	task = (struct kern_task *) (uintptr_t) task_id;
+	task->refcount++;
+	return (task);
+}
+
+struct kern_task *
+kern_task_lookup(kern_task_id_t task_id)
+{
+	struct kern_task *task;
+	platform_critical_lock_t s;
+
+	platform_critical_enter(&s);
+	task = _kern_task_lookup_locked(task_id);
+	platform_critical_exit(&s);
+	return (task);
+}
+
+void
+kern_task_refcount_inc(struct kern_task *task)
+{
+	task->refcount++;
+}
+
+void
+kern_task_refcount_dec(struct kern_task *task)
+{
+	task->refcount--;
+}
+
+void
+kern_task_exit(void)
+{
+	platform_critical_lock_t s;
+
+	console_printf("[task] %s: called\n", __func__);
+	platform_critical_enter(&s);
+	kern_task_set_state_locked(KERN_TASK_STATE_DYING);
+	platform_critical_exit(&s);
+	return;
+}
+
+void
+kern_task_kill(kern_task_id_t task_id)
+{
+	return;
+}
+
+int
+kern_task_wait(kern_task_signal_mask_t sig_mask,
+    kern_task_signal_set_t *sig_set)
+{
+	return (-1);
+}
+
+int
+kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
+{
+	return (-1);
+}
+
+static void
+_kern_task_set_state_locked(struct kern_task *task,
+    kern_task_state_t new_state)
+{
+	/* Update state */
+	task->cur_state = new_state;
+
+	/* XXX TODO: need to shift it to different task lists */
+	/* XXX TODO: may need to signal a context switch */
+}
+
+void
+kern_task_set_state_locked(kern_task_state_t new_state)
+{
+	_kern_task_set_state_locked(current_task, new_state);
+}
+
+void
+kern_task_set_task_state_locked(kern_task_id_t task_id,
+    kern_task_state_t new_state)
+{
+	struct kern_task *task;
+
+	task = _kern_task_lookup_locked(task_id);
+	_kern_task_set_state_locked(task, new_state);
+	kern_task_refcount_dec(task);
 }

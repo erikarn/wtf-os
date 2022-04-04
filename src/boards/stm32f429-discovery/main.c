@@ -190,6 +190,8 @@ PendSV_Handler(void)
 int
 main(void)
 {
+    platform_critical_lock_t s;
+
     /* Setup initial hardware before we setup console, echo etc */
 
     setup_led_gpios();
@@ -249,7 +251,12 @@ main(void)
     // Enable CPU interrupts
     platform_cpu_irq_enable();
 
-    /* Idle loop, do everything in interrupts */
+    // Context switch, begin the fun stuff
+    platform_critical_enter(&s);
+    arm_m4_exception_set_pendsv();
+    platform_critical_exit(&s);
+
+    // Now idle, we should either not get here, or not stay here long
     while (1) {
         platform_cpu_idle();
     }
