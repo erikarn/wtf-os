@@ -36,6 +36,7 @@
 #include "kern/core/task.h"
 
 #include "core/platform.h"
+#include "core/lock.h"
 #include "core/arm_m4_systick.h"
 #include "core/arm_m4_nvic.h"
 
@@ -171,13 +172,13 @@ EXTI0_IRQHandler(void)
 void
 SysTick_Handler(void)
 {
-	irq_save_t save;
+	platform_critical_lock_t s;
 
 	console_printf("[systick] triggered!\n");
 	//arm_m4_systick_stop_counting();
-	save = platform_cpu_irq_disable_save();
+	platform_critical_enter(&s);
 	arm_m4_exception_set_pendsv();
-	platform_cpu_irq_enable_restore(save);
+	platform_critical_exit(&s);
 }
 
 __attribute__((naked)) void

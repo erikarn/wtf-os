@@ -1,5 +1,6 @@
 BSP_SUBDIR=bsp
 KERN_SUBDIR=kern
+BOARD_SUBDIR=boards
 
 COMPILER_PATH=/usr/local/gcc-arm-embedded/bin
 # COMPILER_PATH=/usr/local/bin
@@ -64,8 +65,8 @@ SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strnlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlcpy.c
 
-# The top-level program!
-SRCS += toggle.c
+# The board initialisation routine
+SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c
 
 # Don't modify below here
 
@@ -81,19 +82,19 @@ C_OBJS = $(C_SRCS:%.c=%.o)
 S_OBJS = $(S_SRCS:%.s=%.o)
 SS_OBJS = $(SS_SRCS:%.S=%.o)
 
-.PHONY: toggle
+.PHONY: wtfos
 
-all: toggle
+all: wtfos
 
-toggle: toggle.elf
+wtfos: wtfos.elf
 
-toggle.elf: $(C_OBJS) $(S_OBJS) $(SS_OBJS)
+wtfos.elf: $(C_OBJS) $(S_OBJS) $(SS_OBJS)
 	$(CC) $(CFLAGS) $(C_OBJS) $(S_OBJS) $(SS_OBJS) -o $@
-	$(OBJCOPY) -O binary toggle.elf toggle.bin
+	$(OBJCOPY) -O binary wtfos.elf wtfos.bin
 
-flash: toggle
-	st-flash --connect-under-reset write toggle.bin 0x8000000
+flash: wtfos
+	st-flash --connect-under-reset write wtfos.bin 0x8000000
 
 clean:
 	rm -f $(C_OBJS) $(S_OBJS)
-	rm -f toggle.elf toggle.bin
+	rm -f wtfos.elf wtfos.bin
