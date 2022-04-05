@@ -45,10 +45,10 @@ arm_m4_systick_enable_interrupt(bool enable)
 }
 
 /**
- * Program in the given value and start counting.
+ * Program in the given value, but don't start counting.
  */
 void
-arm_m4_systick_set_counter_and_start(uint32_t counter_val)
+arm_m4_systick_set_counter(uint32_t counter_val)
 {
 	uint32_t val;
 
@@ -64,14 +64,10 @@ arm_m4_systick_set_counter_and_start(uint32_t counter_val)
 	/* Clear current value */
 	os_reg_write32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_VAL, 0);
 
-	/* Enable counting */
-	val = os_reg_read32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CTRL);
-	val |= ARM_SYSTICK_REG_STK_CTRL_ENABLE;
-	os_reg_write32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CTRL, val);
 }
 
 void
-arm_m4_systick_set_usec_and_start(uint32_t usec_val)
+arm_m4_systick_set_usec(uint32_t usec_val)
 {
 	uint64_t tmp;
 
@@ -86,8 +82,23 @@ arm_m4_systick_set_usec_and_start(uint32_t usec_val)
 	if (tmp > 0x0ffffffffL)
 		tmp = 0xffffffff;
 
-	arm_m4_systick_set_counter_and_start((uint32_t) tmp);
+	arm_m4_systick_set_counter((uint32_t) tmp);
 }
+
+/**
+ * Start counting.
+ */
+void
+arm_m4_systick_start_counting(void)
+{
+	uint32_t val;
+
+	/* Enable counting */
+	val = os_reg_read32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CTRL);
+	val |= ARM_SYSTICK_REG_STK_CTRL_ENABLE;
+	os_reg_write32(ARM_SYSTICK_BASE, ARM_SYSTICK_REG_STK_CTRL, val);
+}
+
 
 /**
  * Stop counting.

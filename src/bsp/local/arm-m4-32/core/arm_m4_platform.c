@@ -191,8 +191,48 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param)
 	return (stack_addr_t) (ps);
 }
 
+/**
+ * Kick off a context switch, either now or soon.
+ *
+ * This may be called inside a critical section; it's not guaranteed to
+ * DO the context switch but it'll do what's needed to do one when
+ * no spinlock/critical sections are held.
+ */
 void
 platform_kick_context_switch(void)
 {
 	arm_m4_exception_set_pendsv();
+}
+
+/**
+ * Setup the platform timer for the given interval in milliseconds.
+ *
+ * This requires that the platform timer code has already been
+ * configured so this can be called with a millisecond value.
+ */
+void
+platform_timer_set_msec(uint32_t msec)
+{
+
+	arm_m4_systick_set_usec(msec * 1000);
+}
+
+/**
+ * Enable the platform timer.
+ *
+ * This is free-running and will keep generating interrupts at the
+ * programmed rate until it is disabled.
+ */
+void
+platform_timer_enable(void)
+{
+
+	arm_m4_systick_start_counting();
+}
+
+void
+platform_timer_disable(void)
+{
+
+	arm_m4_systick_stop_counting();
 }

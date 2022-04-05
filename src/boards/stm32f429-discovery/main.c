@@ -166,7 +166,6 @@ EXTI0_IRQHandler(void)
 	stm32f429_hw_exti_ack_pending_interrupt(0);
 	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
 	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
-        arm_m4_systick_set_counter_and_start(10485760);
 }
 
 void
@@ -244,11 +243,13 @@ main(void)
     /* Enable EXTI0 interrupt in the NVIC block (irq 6) */
     platform_irq_enable(6);
 
-    // systick test
+    // Systick setup, so we can generate tick events
     arm_m4_systick_set_hclk_freq(stm32f429_get_system_core_clock());
     arm_m4_systick_enable_interrupt(true);
+
     // one second systick for now
-    arm_m4_systick_set_usec_and_start(1000 * 1000);
+    platform_timer_set_msec(1000);
+    platform_timer_enable();
 
     // Enable CPU interrupts
     platform_cpu_irq_enable();
