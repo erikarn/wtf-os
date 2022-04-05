@@ -17,6 +17,7 @@
  * SPDX-Licence-Identifier: GPL-3.0-or-later
  */
 #include <stddef.h>
+#include <stdbool.h>
 
 #include <kern/libraries/list/list.h>
 #include <kern/libraries/container/container.h>
@@ -85,4 +86,11 @@ list_delete(struct list_head *head, struct list_node *node)
 	if (node->prev != NULL) {
 		node->prev->next = node->next;
 	}
+}
+
+bool
+list_is_empty(const struct list_head *head)
+{
+
+	return (head->head == NULL);
 }
