@@ -147,6 +147,23 @@ kern_timer_tick(void)
 }
 
 void
+kern_timer_idle(void)
+{
+#if 0
+	platform_spinlock_lock(&timer_lock);
+	/*
+	 * If we have no timers, (and later on if we're not
+	 * required to keep timekeeping) then we don't need
+	 * the timer to run.
+	 */
+	if (list_is_empty(&timer_list)) {
+		kern_timer_stop_locked();
+	}
+	platform_spinlock_unlock(&timer_lock);
+#endif
+}
+
+void
 kern_timer_event_setup(kern_timer_event_t *event,
     kern_timer_event_fn_t *fn, void *arg1, uintptr_t arg2,
     uint32_t arg3)

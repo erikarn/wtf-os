@@ -10,6 +10,7 @@
 
 #include <kern/core/exception.h>
 #include <kern/core/task.h>
+#include <kern/core/timer.h>
 #include <kern/console/console.h>
 
 #include <core/platform.h>
@@ -147,7 +148,20 @@ kern_idle_task_fn(void)
 
 	console_printf("[idle] started!\n");
 	while (1) {
-//		console_printf("[idle] entering idle!\n");
+		console_printf("[idle] entering idle!\n");
+
+		/*
+		 * if we get to the idle scheduler loop
+		 * then it means nothing else needed to
+		 * run.
+		 *
+		 * Call into the timer to see if it needs
+		 * to schedule another tick.  If it doesn't,
+		 * it may actually decide to disable the timer
+		 * entirely.
+		 */
+		kern_timer_idle();
+
 		platform_cpu_idle();
 
 		// Hack to test sleep/wakeup task stuff
