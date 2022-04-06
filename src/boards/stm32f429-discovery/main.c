@@ -172,16 +172,9 @@ EXTI0_IRQHandler(void)
 void
 SysTick_Handler(void)
 {
-	platform_critical_lock_t s;
-
 	//console_printf("[systick] triggered!\n");
-	//arm_m4_systick_stop_counting();
-
 	kern_timer_tick();
-
-	platform_critical_enter(&s);
-	arm_m4_exception_set_pendsv();
-	platform_critical_exit(&s);
+	kern_task_tick();
 }
 
 __attribute__((naked)) void
@@ -193,7 +186,6 @@ PendSV_Handler(void)
 int
 main(void)
 {
-    platform_critical_lock_t s;
 
     /* Setup initial hardware before we setup console, echo etc */
 
@@ -218,20 +210,6 @@ main(void)
 
     // Systick setup, so we can generate tick events
     arm_m4_systick_set_hclk_freq(stm32f429_get_system_core_clock());
-
-    /*
-     * Setup the timer infra; one second tick for now
-     * The timer infra will start with the timer itself
-     * disabled; it'll be enabled below when we're
-     * ready to context switch.
-     */
-    kern_timer_init();
-    kern_timer_set_tick_interval(1000);
-    arm_m4_systick_enable_interrupt(true);
-
-    /* Setup task system, idle task */
-    kern_task_setup();
-
 
     console_printf("[wtfos] calculated core freq=%d MHz\n",
         stm32f429_get_system_core_clock());
@@ -264,14 +242,29 @@ main(void)
     // Enable CPU interrupts
     platform_cpu_irq_enable();
 
+    /*
+     * Setup the timer infra; 1000 milliseconds for now.
+     *
+     * The timer infra will start with the timer itself
+     * disabled; it'll be enabled below when we're
+     * ready to context switch.
+     */
+    kern_timer_init();
+    kern_timer_set_tick_interval(1000);
+    arm_m4_systick_enable_interrupt(true);
+
     // Start the kernel timer for now; later on it'll be started
     // by the task / scheduler / timer code if we have any work to do.
     kern_timer_start();
 
-    // Context switch, begin the fun stuff
-    platform_critical_enter(&s);
-    platform_kick_context_switch();
-    platform_critical_exit(&s);
+    /* Setup task system, idle task; test tasks, etc but not run them */
+    kern_task_setup();
+
+    /* Ready to start context switching */
+    kern_task_ready();
+
+    /* Kick start context switching */
+    kern_task_tick();
 
     // Now idle, we should either not get here, or not stay here long
     while (1) {

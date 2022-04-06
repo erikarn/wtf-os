@@ -12,6 +12,7 @@ extern	void kern_timer_start(void);
 extern	void kern_timer_stop(void);
 extern	void kern_timer_tick(void);
 extern	void kern_timer_idle(void);
+extern	void kern_timer_taskcount(uint32_t tasks);
 
 extern	void kern_timer_event_setup(kern_timer_event_t *event,
 	    kern_timer_event_fn_t *fn, void *arg1, uintptr_t arg2,

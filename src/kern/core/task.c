@@ -20,6 +20,10 @@ struct kern_task *current_task = NULL;
 static platform_spinlock_t kern_task_spinlock;
 
 static struct list_head kern_task_list;
+static struct list_head kern_task_active_list;
+static uint32_t active_task_count;
+
+static bool task_switch_ready = false;
 
 /*
  * Idle task
@@ -93,44 +97,44 @@ kern_task_select(void)
 	struct list_node *node;
 
 	/*
-	 * Walk the list of tasks, looking for the first one that
-	 * is awake.  If we can't find one that's ready then
-	 * we will schedule the idle task.
+	 * Walk the list of active tasks.  For now we just pick the
+	 * task at the head of the list and we put it at the tail,
+	 * making this purely a round robin scheduler.
 	 */
 	platform_spinlock_lock(&kern_task_spinlock);
-	node = kern_task_list.head;
-	while (node != NULL) {
-		task = container_of(node, struct kern_task, task_list_node);
-		if (task == &idle_task) {
-			goto next;
-		}
-
-		/* First task that is ready to run, we run */
-		/* Yeah yeah, no priorities, etc */
-		if (task->cur_state == KERN_TASK_STATE_READY)
-			break;
-next:
-		node = node->next;
+	node = kern_task_active_list.head;
+	if (node == NULL) {
+		task = NULL;
+	} else {
+		task = container_of(node, struct kern_task, task_active_node);
 	}
 
-	/* Update this task to be ready to run again */
+	/*
+	 * If there isn't a task on the active list then we schedule the
+	 * idle task.  If there /is/ a task then we get it ready to run
+	 * and move the current task to the end of the active list.
+	 */
+
+	/*
+	 * Update this task to be ready to run again.
+	 *
+	 * It's done like this rather than calling set_state because
+	 * we don't want to shuffle it around on lists and kick more
+	 * re-scheduling.  RUNNING<->READY is fine like this; it's
+	 * the sleep transitions we need that set state call for.
+	 */
 	if (current_task->cur_state == KERN_TASK_STATE_RUNNING)
 		current_task->cur_state = KERN_TASK_STATE_READY;
 
 	/* Update current task */
-	if (node != NULL) {
+	if (task != NULL) {
 		current_task = task;
 		/*
-		 * Move to the end of the list for now, so other tasks
+		 * Move to the end of the active list so other tasks
 		 * can run.
-		 *
-		 * Once this /works/ at all, it should be replaced with
-		 * a sleep list, run list and task list, and we reorder
-		 * the runlist/sleep list instead of the global list;
-		 * and actually care about priorities too.
 		 */
-		list_delete(&kern_task_list, node);
-		list_add_tail(&kern_task_list, node);
+		list_delete(&kern_task_active_list, &task->task_active_node);
+		list_add_tail(&kern_task_active_list, &task->task_active_node);
 	} else {
 		current_task = &idle_task;
 	}
@@ -139,6 +143,17 @@ next:
 	current_task->cur_state = KERN_TASK_STATE_RUNNING;
 
 	platform_spinlock_unlock(&kern_task_spinlock);
+
+	/*
+	 * If we have any other tasks available then we need
+	 * to kick start the timer so we can context switch.
+	 *
+	 * Technically we only need to run the timer if
+	 * we have more than one running task.  There's no
+	 * need to context switch if we have a /single/ task
+	 * running.
+	 */
+	kern_timer_taskcount(active_task_count);
 }
 
 static void
@@ -209,16 +224,23 @@ _kern_task_set_state_locked(struct kern_task *task,
 	if (task->cur_state == new_state)
 		return;
 
+	/* Update the new state */
 	task->cur_state = new_state;
 
-	/*
-	 * Note: no multiple lists yet!
-	 */
-
 	switch (task->cur_state) {
+	case KERN_TASK_STATE_DYING:
+		/* XXX TODO */
+		console_printf("[task] taskptr 0x%x todo state DYING\n",
+		    task);
+		task->cur_state = KERN_TASK_STATE_SLEEPING;
+		/* FALLTHROUGH */
 	case KERN_TASK_STATE_SLEEPING:
-		list_delete(&kern_task_list, &task->task_list_node);
-		list_add_tail(&kern_task_list, &task->task_list_node);
+		if (task->is_on_active_list) {
+			list_delete(&kern_task_active_list,
+			    &task->task_active_node);
+			task->is_on_active_list = false;
+			active_task_count--;
+		}
 		do_ctx = true;
 		break;
 	case KERN_TASK_STATE_READY:
@@ -228,16 +250,15 @@ _kern_task_set_state_locked(struct kern_task *task,
 		 * running.  For now let's just not and let the scheduler
 		 * pick it up.
 		 */
-		list_delete(&kern_task_list, &task->task_list_node);
-		list_add_head(&kern_task_list, &task->task_list_node);
-		do_ctx = false;
-		break;
-	case KERN_TASK_STATE_DYING:
-		/* XXX TODO */
-		console_printf("[task] taskptr 0x%x todo state DYING\n",
-		    task);
-		task->cur_state = KERN_TASK_STATE_SLEEPING;
-		do_ctx = true;
+		if (task->is_on_active_list == false) {
+			list_add_tail(&kern_task_active_list,
+			    &task->task_active_node);
+			task->is_on_active_list = true;
+			active_task_count++;
+			do_ctx = true;
+		} else {
+			do_ctx = false;
+		}
 		break;
 	case KERN_TASK_STATE_RUNNING:
 	default:
@@ -246,12 +267,13 @@ _kern_task_set_state_locked(struct kern_task *task,
 		break;
 	}
 
+
 	/*
 	 * Remember, this won't DO the context switch until the critical
 	 * section / spinlock is finished.  It's just requesting that
 	 * we do a context switch soon.
 	 */
-	if (do_ctx) {
+	if (do_ctx && task_switch_ready) {
 		platform_kick_context_switch();
 	}
 }
@@ -261,11 +283,14 @@ kern_task_setup(void)
 {
 	platform_spinlock_init(&kern_task_spinlock);
 	list_head_init(&kern_task_list);
+	list_head_init(&kern_task_active_list);
+	active_task_count = 0;
 
 	/* Idle task will be magically made ready to run */
 	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack));
 
+	/* Test task will be made ready to run as well */
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
 	platform_spinlock_lock(&kern_task_spinlock);
@@ -517,4 +542,35 @@ kern_task_get_sigmask(void)
 {
 
 	return (current_task->sig_mask);
+}
+
+/**
+ * Called by the timer to potentially schedule a context switch.
+ *
+ * This will check to see if we CAN context switch or whether we
+ * need to wait until we're fully setup.
+ */
+void
+kern_task_tick(void)
+{
+	if (task_switch_ready == false) {
+		return;
+	}
+
+	platform_critical_lock_t s;
+	platform_critical_enter(&s);
+	platform_kick_context_switch();
+	platform_critical_exit(&s);
+}
+
+/**
+ * Called to actually mark the system as ready to task-switch.
+ *
+ * This sets the flag that allows the timer and scheduler to
+ * start running.
+ */
+void
+kern_task_ready(void)
+{
+	task_switch_ready = true;
 }

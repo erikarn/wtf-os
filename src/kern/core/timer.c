@@ -70,8 +70,10 @@ kern_timer_set_tick_interval(uint32_t msec)
 static void
 kern_timer_start_locked(void)
 {
-	kern_timer_running = true;
-	platform_timer_enable();
+	if (kern_timer_running == false) {
+		kern_timer_running = true;
+		platform_timer_enable();
+	}
 }
 
 /**
@@ -81,10 +83,15 @@ kern_timer_start_locked(void)
 static void
 kern_timer_stop_locked(void)
 {
-	kern_timer_running = false;
-	platform_timer_disable();
+	if (kern_timer_running == true) {
+		kern_timer_running = false;
+		platform_timer_disable();
+	}
 }
 
+/**
+ * Public function - start the timer.
+ */
 void
 kern_timer_start(void)
 {
@@ -93,6 +100,9 @@ kern_timer_start(void)
 	platform_spinlock_unlock(&timer_lock);
 }
 
+/**
+ * Public function - stop the timer.
+ */
 void
 kern_timer_stop(void)
 {
@@ -146,21 +156,57 @@ kern_timer_tick(void)
 	}
 }
 
+/**
+ * Called in the idle task/loop when we don't have any work
+ * to schedule.
+ *
+ * If we don't have work to schedule AND we don't have any
+ * timer events (and later, if we don't have a need for
+ * timekeeping) then we just disable the timer altogether.
+
+ * The task scheduler and any other eventual kernel code
+ * that wishes to use time related stuff will just need
+ * to call it again to start things up.
+ */
 void
 kern_timer_idle(void)
 {
-#if 0
+#if 1
 	platform_spinlock_lock(&timer_lock);
-	/*
-	 * If we have no timers, (and later on if we're not
-	 * required to keep timekeeping) then we don't need
-	 * the timer to run.
-	 */
+
 	if (list_is_empty(&timer_list)) {
 		kern_timer_stop_locked();
 	}
 	platform_spinlock_unlock(&timer_lock);
 #endif
+}
+
+/**
+ * Called in the task context switch code to update
+ * how many tasks there are.
+ *
+ * If there is only one task then we don't need
+ * to re-enable the timer; it'll just keep running.
+ * (of course if we eventually need timekeeping and
+ * someone has requested it enabled, we'll also
+ * start it.)
+ *
+ * But if we have more than one task then we should
+ * re-enable the timers.
+ *
+ * This likely doesn't belong here as it is being
+ * given knowledge about the number of tasks running,
+ * but it's easy to push back into the task code
+ * if needs be.
+ */
+void
+kern_timer_taskcount(uint32_t tasks)
+{
+	if (tasks > 1) {
+		platform_spinlock_lock(&timer_lock);
+		kern_timer_start_locked();
+		platform_spinlock_unlock(&timer_lock);
+	}
 }
 
 void
@@ -235,6 +281,19 @@ done:
 	return (true);
 }
 
+/**
+ * Delete the given timer event.
+ *
+ * An event can only be deleted if it's pending.
+ * If it's active or about to be active (ie, it's deleted
+ * from the timer list and either not present or about
+ * to be run) then it can't be canceled/deleted here,
+ * and 'false' will be returned.
+ *
+ * @param[in] event Event to delete
+ * @retval true if the event was deleted before run;
+ *         false if it wasn't on the list or is about to run.
+ */
 bool
 kern_timer_event_del(kern_timer_event_t *event)
 {
@@ -255,4 +314,3 @@ kern_timer_event_del(kern_timer_event_t *event)
 
 	return (ret);
 }
-

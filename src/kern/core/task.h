@@ -43,6 +43,9 @@ struct kern_task {
 	void *kern_entry_point;
 
 	struct list_node task_list_node;
+	struct list_node task_active_node;
+
+	bool is_on_active_list;
 
 	kern_task_state_t cur_state;
 
@@ -153,5 +156,8 @@ extern	void kern_task_set_task_state_locked(kern_task_id_t task_id,
 extern	void kern_task_set_sigmask(kern_task_signal_mask_t and_sig_mask,
 	    kern_task_signal_mask_t or_mask);
 extern	kern_task_signal_mask_t kern_task_get_sigmask(void);
+
+extern	void kern_task_tick(void);
+extern	void kern_task_ready(void);
 
 #endif	/* __KERN_TASK_H__ */
