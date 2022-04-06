@@ -59,6 +59,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/core/task.c
+SRCS += $(KERN_SUBDIR)/core/timer.c
 
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c

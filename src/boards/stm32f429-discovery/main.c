@@ -34,6 +34,7 @@
 
 #include "kern/console/console.h"
 #include "kern/core/task.h"
+#include "kern/core/timer.h"
 
 #include "core/platform.h"
 #include "core/lock.h"
@@ -175,6 +176,9 @@ SysTick_Handler(void)
 
 	//console_printf("[systick] triggered!\n");
 	//arm_m4_systick_stop_counting();
+
+	kern_timer_tick();
+
 	platform_critical_enter(&s);
 	arm_m4_exception_set_pendsv();
 	platform_critical_exit(&s);
@@ -212,8 +216,22 @@ main(void)
     /* (yeah a hack for now) */
     stm32f429_uart_enable_rx_intr();
 
+    // Systick setup, so we can generate tick events
+    arm_m4_systick_set_hclk_freq(stm32f429_get_system_core_clock());
+
+    /*
+     * Setup the timer infra; one second tick for now
+     * The timer infra will start with the timer itself
+     * disabled; it'll be enabled below when we're
+     * ready to context switch.
+     */
+    kern_timer_init();
+    kern_timer_set_tick_interval(1000);
+    arm_m4_systick_enable_interrupt(true);
+
     /* Setup task system, idle task */
     kern_task_setup();
+
 
     console_printf("[wtfos] calculated core freq=%d MHz\n",
         stm32f429_get_system_core_clock());
@@ -243,16 +261,12 @@ main(void)
     /* Enable EXTI0 interrupt in the NVIC block (irq 6) */
     platform_irq_enable(6);
 
-    // Systick setup, so we can generate tick events
-    arm_m4_systick_set_hclk_freq(stm32f429_get_system_core_clock());
-    arm_m4_systick_enable_interrupt(true);
-
-    // one second systick for now
-    platform_timer_set_msec(1000);
-    platform_timer_enable();
-
     // Enable CPU interrupts
     platform_cpu_irq_enable();
+
+    // Start the kernel timer for now; later on it'll be started
+    // by the task / scheduler / timer code if we have any work to do.
+    kern_timer_start();
 
     // Context switch, begin the fun stuff
     platform_critical_enter(&s);

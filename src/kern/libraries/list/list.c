@@ -72,6 +72,37 @@ list_add_tail(struct list_head *head, struct list_node *node)
 }
 
 void
+list_add_before(struct list_head *head, struct list_node *before,
+    struct list_node *node)
+{
+	node->next = before;
+	node->prev = before->prev;
+	if (before->prev != NULL) {
+		before->prev->next = node;
+	} else {
+		/* It's at the beginning of the list */
+		head->head = node;
+	}
+	before->prev = node;
+}
+
+void
+list_add_after(struct list_head *head, struct list_node *after,
+    struct list_node *node)
+{
+	node->prev = after;
+	node->next = after->next;
+	if (after->next != NULL) {
+		after->next->prev = node;
+	} else {
+		/* It's at the end of the list */
+		head->tail = node;
+	}
+	after->next = node;
+}
+
+
+void
 list_delete(struct list_head *head, struct list_node *node)
 {
 	if (head->head == node)

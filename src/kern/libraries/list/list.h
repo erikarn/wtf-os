@@ -34,6 +34,10 @@ extern	void list_head_init(struct list_head *head);
 extern	void list_node_init(struct list_node *node);
 
 extern	void list_add_head(struct list_head *head, struct list_node *node);
+extern	void list_add_before(struct list_head *head,
+	    struct list_node *before, struct list_node *node);
+extern	void list_add_after(struct list_head *head,
+	    struct list_node *after, struct list_node *node);
 extern	void list_add_tail(struct list_head *head, struct list_node *node);
 extern	void list_delete(struct list_head *head, struct list_node *node);
 extern	bool list_is_empty(const struct list_head *head);
