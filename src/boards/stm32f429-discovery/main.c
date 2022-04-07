@@ -35,11 +35,14 @@
 #include "kern/console/console.h"
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
+#include "kern/core/physmem.h"
 
 #include "core/platform.h"
 #include "core/lock.h"
 #include "core/arm_m4_systick.h"
 #include "core/arm_m4_nvic.h"
+
+extern uint32_t _estack, _ebss;
 
 /* XXX */
 extern void arm_m4_task_switch();
@@ -204,6 +207,9 @@ main(void)
 
     platform_cpu_init();
 
+    /* Kernel physmem allocator */
+    kern_physmem_init();
+
     /* do post CPU init interrupt enable for things like USART */
     /* (yeah a hack for now) */
     stm32f429_uart_enable_rx_intr();
@@ -219,6 +225,19 @@ main(void)
         stm32f429_rcc_get_pclk2_freq());
     console_printf("[wtfos] tenms systick = 0x%08x\n",
         arm_m4_systick_get_tenms_calib());
+
+    /*
+     * Physical memory region(s)
+     *
+     * For this particular board we use the symbol info from
+     * the linker script to add in everything from the end
+     * of the data section to the stack end.  Unlike the STM32
+     * HAL/platform code, my code isn't initialising SDRAM as
+     * an optional place to put stack and heap; instead we
+     * will add it as different memory regions.
+     */
+    kern_physmem_add_range((uintptr_t) &_ebss, (uintptr_t) &_estack,
+      KERN_PHYSMEM_FLAG_NORMAL | KERN_PHYSMEM_FLAG_SRAM);
 
     /* Set this pin high so we get toggling LEDs */
     stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
@@ -239,6 +258,7 @@ main(void)
     /* Enable EXTI0 interrupt in the NVIC block (irq 6) */
     platform_irq_enable(6);
 
+
     // Enable CPU interrupts
     platform_cpu_irq_enable();
 
@@ -250,7 +270,7 @@ main(void)
      * ready to context switch.
      */
     kern_timer_init();
-    kern_timer_set_tick_interval(1000);
+    kern_timer_set_tick_interval(100);
     arm_m4_systick_enable_interrupt(true);
 
     // Start the kernel timer for now; later on it'll be started
