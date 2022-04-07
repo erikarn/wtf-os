@@ -3,8 +3,19 @@
 
 typedef struct kern_timer_event kern_timer_event_t;
 
-typedef	void kern_timer_event_fn_t(void *arg1, uintptr_t arg2,
-	    uint32_t arg3);
+typedef	void kern_timer_event_fn_t(kern_timer_event_t *ev, void *arg1,
+	    uintptr_t arg2, uint32_t arg3);
+
+struct kern_timer_event {
+	kern_timer_event_fn_t *fn;
+	struct list_node node;
+	void *arg1;
+	uintptr_t arg2;
+	uint32_t arg3;
+	uint32_t tick;
+	bool added;
+};
+
 
 extern	void kern_timer_init(void);
 extern	void kern_timer_set_tick_interval(uint32_t msec);

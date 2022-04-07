@@ -27,20 +27,31 @@ static struct list_head timer_list;
 
 static bool kern_timer_running = false;
 
+/**
+ * Return true if a is after b
+ */
 #define	kern_timer_after(a, b) ((kern_timer_tick_comp_type_t)(b - a) < 0)
+
+/**
+ * Return true if a is before b
+ */
 #define	kern_timer_before(a, b) ((kern_timer_tick_comp_type_t)(b - a) > 0)
+
+/**
+ * Return true if a is equal to or after b
+ */
 #define	kern_timer_after_eq(a, b) ((kern_timer_tick_comp_type_t)(b - a) <= 0)
+
+/**
+ * Return true if a is equal to or before b
+ */
+
 #define	kern_timer_before_eq(a, b) ((kern_timer_tick_comp_type_t)(b - a) >= 0)
 
-struct kern_timer_event {
-	kern_timer_event_fn_t *fn;
-	struct list_node node;
-	void *arg1;
-	uintptr_t arg2;
-	uint32_t arg3;
-	uint32_t tick;
-	bool added;
-};
+/*
+ * Note - until we get dynamic memory going in the kernel, the timer
+ * struct needs to live in kern_timer.h
+ */
 
 void
 kern_timer_init(void)
@@ -138,7 +149,7 @@ kern_timer_tick(void)
 	while (timer_list.head != NULL) {
 		n = timer_list.head;
 		e = container_of(n, kern_timer_event_t, node);
-		if (kern_timer_before_eq(kern_timer_msec, e->tick)) {
+		if (kern_timer_before_eq(e->tick, kern_timer_tick_msec)) {
 			list_delete(&timer_list, n);
 			e->added = false;
 			list_add_tail(&list, n);
@@ -152,7 +163,7 @@ kern_timer_tick(void)
 	for (n = list.head; n != NULL; n = n->next) {
 		e = container_of(n, kern_timer_event_t, node);
 		list_delete(&list, n);
-		e->fn(e->arg1, e->arg2, e->arg3);
+		e->fn(e, e->arg1, e->arg2, e->arg3);
 	}
 }
 
@@ -266,6 +277,8 @@ kern_timer_event_add(kern_timer_event_t *event, uint32_t msec)
 	}
 
 	list_add_before(&timer_list, n, &event->node);
+
+done:
 	event->tick = abs_msec;
 	event->added = true;
 
@@ -276,7 +289,6 @@ kern_timer_event_add(kern_timer_event_t *event, uint32_t msec)
 		kern_timer_start_locked();
 	}
 
-done:
 	platform_spinlock_unlock(&timer_lock);
 	return (true);
 }

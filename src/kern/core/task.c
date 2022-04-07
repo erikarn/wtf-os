@@ -29,12 +29,11 @@ static bool task_switch_ready = false;
  * Idle task
  */
 static struct kern_task idle_task;
-/* Note: 256 bytes for now; I think we're saving VFP registers */
 static uint8_t kern_idle_stack[256] __attribute__ ((aligned(8))) = { 0 };
 
 static struct kern_task test_task;
-/* Note: 256 bytes for now; I think we're saving VFP registers */
-static uint8_t kern_test_stack[256] __attribute__ ((aligned(8))) = { 0 };
+/* Note: 512 bytes; we need extra for the actual work we do! */
+static uint8_t kern_test_stack[512] __attribute__ ((aligned(8))) = { 0 };
 
 /**
  * Initialise the given task structure.
@@ -159,11 +158,9 @@ kern_task_select(void)
 static void
 kern_idle_task_fn(void)
 {
-	int count = 0;
-
 	console_printf("[idle] started!\n");
 	while (1) {
-		console_printf("[idle] entering idle!\n");
+//		console_printf("[idle] entering idle!\n");
 
 		/*
 		 * if we get to the idle scheduler loop
@@ -176,35 +173,40 @@ kern_idle_task_fn(void)
 		 * entirely.
 		 */
 		kern_timer_idle();
-
 		platform_cpu_idle();
-
-		// Hack to test sleep/wakeup task stuff
-		count++;
-		if (count == 10) {
-			kern_task_id_t t;
-
-			count = 0;
-//			console_printf("[idle] waking up test task!\n");
-			t = kern_task_to_id(&test_task);
-			kern_task_signal(t, 0x00000001);
-		}
 	}
+}
+
+static void
+kern_test_task_timer_ev_fn(kern_timer_event_t *ev, void *arg1,
+    uintptr_t arg2, uint32_t arg3)
+{
+	kern_task_id_t t;
+
+	console_printf("[test] timer fired!\n");
+	t = kern_task_to_id(&test_task);
+	kern_task_signal(t, 0x00000001);
 }
 
 static void
 kern_test_task_fn(void)
 {
 	kern_task_signal_set_t sig;
+	kern_timer_event_t ev;
 
 	console_printf("[test] started!\n");
 
+	/* Enable all signals for now */
 	kern_task_set_sigmask(0x11111111, 0x00000001);
+
+	/* Set up a single timer, fire it 1 second later */
+	kern_timer_event_setup(&ev, kern_test_task_timer_ev_fn, NULL, 0, 0);
+
 	while (1) {
+		/* Wait every 5 seconds for now */
+		kern_timer_event_add(&ev, 5000);
 		console_printf("[test] **** entering wait!\n");
 		(void) kern_task_wait(0xffffffff, &sig);
-//		console_printf("[test] **** entering idle!\n");
-//		platform_cpu_idle();
 	}
 }
 
