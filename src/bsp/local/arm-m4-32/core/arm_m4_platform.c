@@ -173,7 +173,7 @@ platform_task_exit(void)
  */
 
 /*
- * We're using THREAD+PSP for now, see the switch.S code for why.
+ * We're using THREAD+PSP, see the switch.S code for why.
  */
 #define	MODE_HANDLER_MSP 0xfffffff1
 #define	MODE_THREAD_MSP 0xfffffff9

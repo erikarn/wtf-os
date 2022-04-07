@@ -15,29 +15,11 @@
 
 /*
  * This context switch stuff uses PSP for the task switching, and isn't
- * at all touching MSP.  This is a bit problematic right now for a few
- * reasons.
+ * touching MSP.  MSP is used for top level interrupt/exception handling
+ * if it happens whilst another interrupt/exception is happening.
  *
- * + the MSP may be being used when we get higher priority exceptions;
- * + I was /kind/ of hoping I could use the MSP for a kernel task stack,
- *   and the PSP for unprivileged process stack.  Then I could keep them
- *   in different memory regions and protect them.
- *
- * So, I think (!) I need to extend a couple of things here.
- *
- * First up, I think I need to add saving both the MSP and PSP and restoring
- * them every context switch.
- *
- * Then for kernel tasks, can I have the MSP be the only stack pointer?
- * Then interrupts would come in on the current stack pointer? Or is that
- * a bit too problematic? (since we can't just have a kernel task stack
- * be sized for /that/ task, it has to handle interrupts too.)
- *
- * For user tasks, there'd be a kernel stack and a userland stack?
- *
- * Is this something I want to do with MSP = priv, PSP = unpriv, OR
- * do I want a global MSP, and PSP that gets shuffled around based on
- * whether I'm in priv or unpriv mode?
+ * So, we leave PSP here, and we need to ensure we leave enough space
+ * for the MSP.
  */
 
 arm_m4_task_switch:

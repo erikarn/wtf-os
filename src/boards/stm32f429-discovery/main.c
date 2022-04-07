@@ -44,6 +44,9 @@
 
 extern uint32_t _estack, _ebss;
 
+/* XXX yes, this should be a config option */
+#define	ESTACK_MSP_SIZE		1024
+
 /* XXX */
 extern void arm_m4_task_switch();
 
@@ -235,9 +238,16 @@ main(void)
      * HAL/platform code, my code isn't initialising SDRAM as
      * an optional place to put stack and heap; instead we
      * will add it as different memory regions.
+     *
+     * Until we grow a nicer way to reserve the MSP stack,
+     * we just leave it where it is, and reserve it out of this
+     * chunk.
      */
-    kern_physmem_add_range((uintptr_t) &_ebss, (uintptr_t) &_estack,
+    kern_physmem_add_range((uintptr_t) &_ebss,
+      ((uintptr_t) &_estack) - ESTACK_MSP_SIZE,
       KERN_PHYSMEM_FLAG_NORMAL | KERN_PHYSMEM_FLAG_SRAM);
+    kern_physmem_add_range(((uintptr_t) &_estack) - ESTACK_MSP_SIZE,
+      ((uintptr_t) &_estack), KERN_PHYSMEM_FLAG_EXCLUDE);
 
     /* Set this pin high so we get toggling LEDs */
     stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
