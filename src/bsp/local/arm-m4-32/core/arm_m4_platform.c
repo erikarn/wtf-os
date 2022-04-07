@@ -63,7 +63,7 @@ void
 platform_cpu_idle(void)
 {
 
-	enter_wfi();
+	//enter_wfi();
 }
 
 /**
@@ -168,10 +168,20 @@ platform_task_exit(void)
  * @param[in] stack the top of stack, as if this were the SP/MSP.
  * @param[in] entry_point kernel task entry point to jump to
  * @param[in] param argument to pass into r0.
+ * @param[in] is_user Whether to initialise as a userland task
  * @retval stack address as if the hardware had saved execution here
  */
+
+/*
+ * We're using THREAD+PSP for now, see the switch.S code for why.
+ */
+#define	MODE_HANDLER_MSP 0xfffffff1
+#define	MODE_THREAD_MSP 0xfffffff9
+#define	MODE_THREAD_PSP 0xfffffffd
+
 stack_addr_t
-platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param)
+platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
+    bool is_user)
 {
 	stack_addr_t *ps = (void *) (uintptr_t) stack;
 
@@ -185,7 +195,7 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param)
 	ps = ps - 5;	/* skip r12, r3, r3, r1 */
 	*ps = ((kern_code_exec_addr_t) entry_point); // r0
 	ps--;
-	*ps = 0xfffffffd;		// INITIAL EXC_RETURN
+	*ps = MODE_THREAD_PSP;		// INITIAL EXC_RETURN
 	ps -= 8;	/* skip r11, r10, r9, r8, r7, r6, r5, r4 */
 
 	return (stack_addr_t) (ps);

@@ -60,6 +60,9 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->kern_entry_point = entry_point;
 	task->kern_stack = kern_stack;
 	task->kern_stack_size = kern_stack_size;
+	task->user_stack = 0;
+	task->user_stack_size = 0;
+	task->is_user_task = 0;
 
 	/*
 	 * Mark this task as idle, we haven't started it running.
@@ -73,7 +76,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    task->kern_stack + kern_stack_size,
-	    entry_point, NULL);
+	    entry_point, NULL, false);
 
 	/*
 	 * Last, add it to the global list of tasks.
