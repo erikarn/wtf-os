@@ -36,8 +36,10 @@ arm_m4_task_switch:
 	it eq
 	vstmdbeq r0!, {s16-s31}
 
+	mrs r1, control
+
 	/* Save the core registers. */
-	stmdb r0!, {r4-r11, r14}
+	stmdb r0!, {r1, r4-r11, r14}
 	/* Save the new top of stack into the first member of the TCB. */
 	str r0, [r2]
 
@@ -58,7 +60,8 @@ arm_m4_task_switch:
 	ldr r0, [r1]
 
 	/* Pop the core registers. */
-	ldmia r0!, {r4-r11, r14}
+	ldmia r0!, {r3-r11, r14}
+	msr control, r3
 
 	/*
 	 * Is the task using the FPU context?  If so, pop the high

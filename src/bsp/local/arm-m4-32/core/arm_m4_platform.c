@@ -196,7 +196,13 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
 	*ps = ((kern_code_exec_addr_t) entry_point); // r0
 	ps--;
 	*ps = MODE_THREAD_PSP;		// INITIAL EXC_RETURN
-	ps -= 8;	/* skip r11, r10, r9, r8, r7, r6, r5, r4 */
+	ps -= 9;	/* skip r11, r10, r9, r8, r7, r6, r5, r4 */
+
+	if (is_user) {
+		*ps = 0x03; // CONTROL, unpriv
+	} else {
+		*ps = 0x02; // CONTROL, priv
+	}
 
 	return (stack_addr_t) (ps);
 }
