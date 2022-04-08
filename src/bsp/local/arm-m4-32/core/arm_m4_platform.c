@@ -63,7 +63,7 @@ void
 platform_cpu_idle(void)
 {
 
-	//enter_wfi();
+	enter_wfi();
 }
 
 /**
