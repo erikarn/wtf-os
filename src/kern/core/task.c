@@ -80,6 +80,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->stack_top = platform_task_stack_setup(
 	    task->kern_stack + kern_stack_size,
 	    entry_point, NULL, false);
+	task->kern_stack_top = 0;
 
 	/*
 	 * Last, add it to the global list of tasks.
@@ -122,10 +123,14 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	 * Next we call into the platform code to initialise our
 	 * stack with the above parameters so we can context
 	 * switch /into/ the task when we're ready to run it.
+	 *
+	 * Here our initial stack is our unprivileged stack.
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    task->user_stack + user_stack_size,
 	    entry_point, arg, true);
+	/* And we program in our kernel stack for privileged code */
+	task->kern_stack_top = task->kern_stack + kern_stack_size;
 
 	/*
 	 * Last, add it to the global list of tasks, make it

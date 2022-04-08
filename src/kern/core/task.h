@@ -34,8 +34,23 @@ typedef uintptr_t kern_task_id_t;
 
 #define	KERN_TASK_NAME_SZ		16
 
+/*
+ * The top two entries are very /specifically/ ordered for
+ * the assembly routines for task switching and syscalls.
+ * They make very specific assumptions about the locations of
+ * these through the 'current_task' pointer.
+ *
+ * stack_top is the top of the stack for the /task/ stack.
+ * In kernel tasks that's the kernel stack.  For userland
+ * tasks that's the userland stack.
+ *
+ * For userland tasks, they also have a kernel stack.
+ * The top of /that/ stack is kern_stack_top.
+ */
+
 struct kern_task {
 	volatile stack_addr_t stack_top;
+	volatile stack_addr_t kern_stack_top;
 
 	char task_name[KERN_TASK_NAME_SZ];
 
