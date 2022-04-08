@@ -14,6 +14,8 @@ OBJCOPY=$(COMPILER_PATH)/arm-none-eabi-objcopy
 GEN_FLAGS = -mlittle-endian -mthumb -mcpu=cortex-m4 -mthumb-interwork
 GEN_FLAGS += -mfloat-abi=hard -mfpu=fpv4-sp-d16
 
+AS_FLAGS = -g
+
 # C compiler flags, again some of them are specific to the board
 # being used right now.  They're here because they're not supported
 # if passed into the assembler.
@@ -54,6 +56,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_svc.S
 
 # And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
@@ -70,12 +73,13 @@ SRCS += $(KERN_SUBDIR)/libraries/list/list.c
 
 # The board initialisation routine
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c
+SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userland.c
 
 # Don't modify below here
 
 CFLAGS := $(GEN_FLAGS) $(C_FLAGS)
 
-ASFLAGS = $(GEN_FLAGS)
+ASFLAGS = $(GEN_FLAGS) $(AS_FLAGS)
 
 C_SRCS = $(filter %.c, $(SRCS))
 S_SRCS = $(filter %.s, $(SRCS))

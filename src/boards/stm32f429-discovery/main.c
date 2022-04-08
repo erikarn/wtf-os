@@ -47,8 +47,11 @@ extern uint32_t _estack, _ebss;
 /* XXX yes, this should be a config option */
 #define	ESTACK_MSP_SIZE		1024
 
+extern void setup_test_userland_task(void);
+
 /* XXX */
 extern void arm_m4_task_switch();
+extern void arm_m4_svc_handler();
 
 static void
 cons_putc(char c)
@@ -189,6 +192,12 @@ PendSV_Handler(void)
 	asm("b arm_m4_task_switch");
 }
 
+__attribute__((naked)) void
+SVC_Handler(void)
+{
+	asm("b arm_m4_svc_handler");
+}
+
 int
 main(void)
 {
@@ -289,6 +298,9 @@ main(void)
 
     /* Setup task system, idle task; test tasks, etc but not run them */
     kern_task_setup();
+
+    /* Our test userland task */
+    setup_test_userland_task();
 
     /* Ready to start context switching */
     kern_task_ready();
