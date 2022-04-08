@@ -35,6 +35,9 @@ static struct kern_task test_task;
 /* Note: 512 bytes; we need extra for the actual work we do! */
 static uint8_t kern_test_stack[512] __attribute__ ((aligned(8))) = { 0 };
 
+static void _kern_task_set_state_locked(struct kern_task *task,
+    kern_task_state_t new_state);
+
 /**
  * Initialise the given task structure.
  *
@@ -83,6 +86,54 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 */
 	platform_spinlock_lock(&kern_task_spinlock);
 	list_add_tail(&kern_task_list, &task->task_list_node);
+	platform_spinlock_unlock(&kern_task_spinlock);
+}
+
+void
+kern_task_user_start(struct kern_task *task, void *entry_point,
+    void *arg, const char *name, stack_addr_t kern_stack,
+    int kern_stack_size, stack_addr_t user_stack, int user_stack_size)
+{
+
+	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
+
+	list_node_init(&task->task_list_node);
+
+	/*
+	 * For now we start with the entry point and kernel stack
+	 * being for the "kernel".  I'll worry about changing this
+	 * to support entering a non-kernel task later (where we'll
+	 * end up with both kernel/user stack, and a user address
+	 * entry point.)
+	 */
+	task->kern_entry_point = entry_point;
+	task->kern_stack = kern_stack;
+	task->kern_stack_size = kern_stack_size;
+	task->user_stack = user_stack;
+	task->user_stack_size = user_stack_size;
+	task->is_user_task = 1;
+
+	/*
+	 * Mark this task as idle, we haven't started it running.
+	 */
+	task->cur_state = KERN_TASK_STATE_IDLE;
+
+	/*
+	 * Next we call into the platform code to initialise our
+	 * stack with the above parameters so we can context
+	 * switch /into/ the task when we're ready to run it.
+	 */
+	task->stack_top = platform_task_stack_setup(
+	    task->user_stack + user_stack_size,
+	    entry_point, arg, true);
+
+	/*
+	 * Last, add it to the global list of tasks, make it
+	 * ready to run.
+	 */
+	platform_spinlock_lock(&kern_task_spinlock);
+	list_add_tail(&kern_task_list, &task->task_list_node);
+	_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
 	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
