@@ -1,6 +1,12 @@
 #ifndef	__KERN_TIMER_H__
 #define	__KERN_TIMER_H__
 
+/* XXX TODO: make these hw/types.h things? */
+typedef uint32_t kern_timer_tick_type_t;
+typedef int32_t kern_timer_tick_comp_type_t;
+
+extern	kern_timer_tick_type_t kern_timer_tick_msec;
+
 typedef struct kern_timer_event kern_timer_event_t;
 
 typedef	void kern_timer_event_fn_t(kern_timer_event_t *ev, void *arg1,

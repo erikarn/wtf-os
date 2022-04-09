@@ -15,10 +15,11 @@
 #include <core/platform.h>
 #include <core/lock.h>
 
-typedef uint32_t kern_timer_tick_type_t;
-typedef int32_t kern_timer_tick_comp_type_t;
-
-kern_timer_tick_type_t kern_timer_tick_msec = 0;
+/*
+ * This starts at some negative value so it'll roll over soon.
+ * That way we can find and fix timer overflow boundary case conditions.
+ */
+kern_timer_tick_type_t kern_timer_tick_msec = -32768;
 
 static uint32_t kern_timer_msec = 0;
 
