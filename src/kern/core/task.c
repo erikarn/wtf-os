@@ -381,7 +381,8 @@ kern_test_task_fn(void)
 	while (1) {
 		/* Wait every 5 seconds for now */
 		kern_timer_event_add(&ev, 5000);
-		console_printf("[test] **** entering wait!\n");
+		console_printf("[test] **** (tick=0x%08x), entering wait!\n",
+		    (uint32_t) kern_timer_tick_msec);
 		(void) kern_task_wait(0xffffffff, &sig);
 		/*
 		 * Uncomment this to have the task exit after 10 iterations.
