@@ -21,7 +21,9 @@ static platform_spinlock_t kern_task_spinlock;
 
 static struct list_head kern_task_list;
 static struct list_head kern_task_active_list;
-static uint32_t active_task_count;
+static struct list_head kern_task_dying_list;
+static uint32_t active_task_count = 0;
+static uint32_t dying_task_count = 0;
 
 static bool task_switch_ready = false;
 
@@ -66,6 +68,13 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->user_stack = 0;
 	task->user_stack_size = 0;
 	task->is_user_task = 0;
+
+	/*
+	 * XXX TODO: we don't currently support dynamic memory here.
+	 */
+	task->is_static_task = true;
+	task->is_on_active_list = false;
+	task->is_on_dying_list = false;
 
 	/*
 	 * Mark this task as idle, we haven't started it running.
@@ -113,6 +122,12 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	task->user_stack = user_stack;
 	task->user_stack_size = user_stack_size;
 	task->is_user_task = 1;
+	/*
+	 * XXX TODO: we don't currently support dynamic memory here.
+	 */
+	task->is_static_task = true;
+	task->is_on_active_list = false;
+	task->is_on_dying_list = false;
 
 	/*
 	 * Mark this task as idle, we haven't started it running.
@@ -154,12 +169,24 @@ kern_task_select(void)
 	struct kern_task *task;
 	struct list_node *node;
 
+	platform_spinlock_lock(&kern_task_spinlock);
+	/*
+	 * Special case - handle cleaning up dying tasks.
+	 * If we have any dying tasks on the list, then we
+	 * schedule the idle task immediately.  It'll then
+	 * handle cleanup and then switch again to see
+	 * if anything else is needed.
+	 */
+	if (dying_task_count > 0) {
+		task = NULL;
+		goto skip;
+	}
+
 	/*
 	 * Walk the list of active tasks.  For now we just pick the
 	 * task at the head of the list and we put it at the tail,
 	 * making this purely a round robin scheduler.
 	 */
-	platform_spinlock_lock(&kern_task_spinlock);
 	node = kern_task_active_list.head;
 	if (node == NULL) {
 		task = NULL;
@@ -184,6 +211,7 @@ kern_task_select(void)
 	if (current_task->cur_state == KERN_TASK_STATE_RUNNING)
 		current_task->cur_state = KERN_TASK_STATE_READY;
 
+skip:
 	/* Update current task */
 	if (task != NULL) {
 		current_task = task;
@@ -214,12 +242,100 @@ kern_task_select(void)
 	kern_timer_taskcount(active_task_count);
 }
 
+/**
+ * Clean-up the given task.
+ *
+ * It has already been removed from the list it is on;
+ * so free the memory if required.
+ *
+ * Called with the kern_task_spinlock held - but technically
+ * since it's no longer on the list it doesn't need to be
+ * held with this lock.  Once this all works, it'd be good
+ * to mdify the reaping process to grab the whole list under
+ * the kern_task_spinlock, remove them from the lists and
+ * leave them on an on-stack list, and then free them without
+ * the lock held.
+ *
+ * @param[in] task Task to cleanup
+ */
+static void
+kern_task_cleanup(struct kern_task *task)
+{
+	console_printf("[task] cleaning task 0x%08x\n", task);
+	if (task->is_static_task == false) {
+		console_printf("[task] TODO: actually FREE it!\n");
+	}
+}
+
+/**
+ * Reap dying tasks.
+ *
+ * This will handle removing dying tasks from the relevant
+ * runtime lists and free their memory if required.
+ *
+ * Called with the kern_task_spinlock held.
+ */
+static void
+kern_reap_dying_tasks_locked(void)
+{
+	struct list_node *node;
+	struct kern_task *task;
+
+	while (kern_task_dying_list.head != NULL) {
+		node = kern_task_dying_list.head;
+		task = container_of(node, struct kern_task,
+		    task_active_node);
+
+		/*
+		 * TODO: yeah, when it's time to do a private list,
+		 * we will likely want to have already deleted it from
+		 * the global and running lists, and have it ONLY on
+		 * the dying list.  Then that list can be moved over
+		 * quickly and then freed without having the lock held.
+		 */
+
+		list_delete(&kern_task_dying_list, &task->task_active_node);
+		list_delete(&kern_task_list, &task->task_list_node);
+		dying_task_count--;
+
+		kern_task_cleanup(task);
+
+		/* Task is invalid here */
+	}
+}
+
 static void
 kern_idle_task_fn(void)
 {
 	console_printf("[idle] started!\n");
 	while (1) {
 //		console_printf("[idle] entering idle!\n");
+
+		/*
+		 * See if we have any idle tasks.
+		 * If we do then we finish clean-up here;
+		 * then yield immediately so the scheduler
+		 * gets another crack at it.
+		 *
+		 * Yeah, doing this spinlock to check sucks;
+		 * it'd be nicer if we had a separate kernel
+		 * task to reap dying tasks but that'd require
+		 * an extra kernel task + stack.
+		 *
+		 * Also it would be nice to move them to a private
+		 * list and delete them from the global list, and
+		 * then do the freeing bit without having the spinlock held.
+		 * Maybe do that in the future when we have dynamic
+		 * memory allocation working.
+		 */
+		platform_spinlock_lock(&kern_task_spinlock);
+		if (dying_task_count > 0) {
+			kern_reap_dying_tasks_locked();
+			platform_spinlock_unlock(&kern_task_spinlock);
+			platform_kick_context_switch();
+			continue;
+		}
+		platform_spinlock_unlock(&kern_task_spinlock);
 
 		/*
 		 * if we get to the idle scheduler loop
@@ -252,6 +368,7 @@ kern_test_task_fn(void)
 {
 	kern_task_signal_set_t sig;
 	kern_timer_event_t ev;
+	int count = 0;
 
 	console_printf("[test] started!\n");
 
@@ -266,7 +383,21 @@ kern_test_task_fn(void)
 		kern_timer_event_add(&ev, 5000);
 		console_printf("[test] **** entering wait!\n");
 		(void) kern_task_wait(0xffffffff, &sig);
+		/*
+		 * Uncomment this to have the task exit after 10 iterations.
+		 */
+#if 0
+		if (count > 10) {
+			break;
+		}
+#endif
+		count++;
 	}
+
+	console_printf("[test] Finishing!\n");
+	kern_timer_event_del(&ev);
+	kern_timer_event_clean(&ev);
+	kern_task_exit();
 }
 
 /**
@@ -290,11 +421,31 @@ _kern_task_set_state_locked(struct kern_task *task,
 
 	switch (task->cur_state) {
 	case KERN_TASK_STATE_DYING:
-		/* XXX TODO */
-		console_printf("[task] taskptr 0x%x todo state DYING\n",
-		    task);
-		task->cur_state = KERN_TASK_STATE_SLEEPING;
-		/* FALLTHROUGH */
+		/*
+		 * Dying tasks will get moved to the dying list; they won't
+		 * be scheduled, and then the task switcher / idle loop
+		 * will clean it up.
+		 */
+		if (task->is_on_active_list) {
+			list_delete(&kern_task_active_list,
+			    &task->task_active_node);
+			task->is_on_active_list = false;
+			active_task_count--;
+		}
+
+		/*
+		 * Handle the case of getting two DYING states;
+		 * just be paranoid and ensure we don't double
+		 * account it.
+		 */
+		if (task->is_on_dying_list == false) {
+			task->is_on_dying_list = true;
+			dying_task_count++;
+			list_add_tail(&kern_task_dying_list,
+			    &task->task_active_node);
+		}
+		do_ctx = true;
+		break;
 	case KERN_TASK_STATE_SLEEPING:
 		if (task->is_on_active_list) {
 			list_delete(&kern_task_active_list,
@@ -399,6 +550,13 @@ kern_task_refcount_dec(struct kern_task *task)
 	task->refcount--;
 }
 
+/**
+ * Mark the current task as dying.
+ *
+ * This will move the current task to the dead list; the
+ * task switch and idle task will take care of cleaning
+ * up said task.
+ */
 void
 kern_task_exit(void)
 {
@@ -412,10 +570,26 @@ kern_task_exit(void)
 	return;
 }
 
+/**
+ * Kill a running kernel task.
+ *
+ * This can be called from any other kernel task.
+ *
+ * It's not yet implemented because I haven't yet figured
+ * out a sensible flow for how to give a running kernel
+ * task a chance to free its resources before it exits.
+ *
+ * Instead, I may make it so kernel tasks can be signaled
+ * to end when they're sleeping in a wait() call and
+ * should check for a signal that says "and now you should
+ * exit."
+ *
+ * Anyway, I'll worry about that all of that later.
+ */
 void
 kern_task_kill(kern_task_id_t task_id)
 {
-	console_printf("[task] %s: called\n", __func__);
+	console_printf("[task] %s: TODO\n", __func__);
 	/* XXX TODO */
 	return;
 }

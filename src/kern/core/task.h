@@ -68,6 +68,8 @@ struct kern_task {
 	struct list_node task_active_node;
 
 	bool is_on_active_list;
+	bool is_on_dying_list;
+	bool is_static_task;		/* Task ram/stack isn't free()able */
 
 	kern_task_state_t cur_state;
 
