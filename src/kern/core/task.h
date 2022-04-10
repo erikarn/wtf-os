@@ -2,6 +2,7 @@
 #define	__KERN_TASK_H__
 
 #include <kern/libraries/list/list.h>
+#include <kern/core/signal.h>
 
 typedef enum {
 	KERN_TASK_STATE_NONE = 0,
@@ -11,9 +12,6 @@ typedef enum {
 	KERN_TASK_STATE_DYING = 4,
 	KERN_TASK_STATE_IDLE = 5,
 } kern_task_state_t;
-
-typedef uint32_t kern_task_signal_mask_t;
-typedef uint32_t kern_task_signal_set_t;
 
 /**
  * In this task implementation, I'm going to super cheat and

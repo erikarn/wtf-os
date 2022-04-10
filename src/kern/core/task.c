@@ -9,6 +9,7 @@
 #include <kern/libraries/container/container.h>
 
 #include <kern/core/exception.h>
+#include <kern/core/signal.h>
 #include <kern/core/task.h>
 #include <kern/core/timer.h>
 #include <kern/console/console.h>
@@ -246,7 +247,8 @@ skip:
  * Clean-up the given task.
  *
  * It has already been removed from the list it is on;
- * so free the memory if required.
+ * so free task related like resources like (upcoming)
+ * handles, memory, ports, etc if required.
  *
  * Called with the kern_task_spinlock held - but technically
  * since it's no longer on the list it doesn't need to be
@@ -557,6 +559,9 @@ kern_task_refcount_dec(struct kern_task *task)
  * This will move the current task to the dead list; the
  * task switch and idle task will take care of cleaning
  * up said task.
+ *
+ * This must be called from the task context itself;
+ * it must not be called from another context.
  */
 void
 kern_task_exit(void)
