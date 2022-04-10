@@ -34,7 +34,7 @@ typedef uintptr_t kern_task_id_t;
 #define	KERN_TASK_NAME_SZ		16
 
 /*
- * The top two entries are very /specifically/ ordered for
+ * The top three entries are very /specifically/ ordered for
  * the assembly routines for task switching and syscalls.
  * They make very specific assumptions about the locations of
  * these through the 'current_task' pointer.
@@ -45,11 +45,16 @@ typedef uintptr_t kern_task_id_t;
  *
  * For userland tasks, they also have a kernel stack.
  * The top of /that/ stack is kern_stack_top.
+ *
+ * When we're doing syscalls, we need to store the original
+ * return address somewhere before we trampoline into the
+ * kernel syscall side.
  */
 
 struct kern_task {
 	volatile stack_addr_t stack_top;
 	volatile stack_addr_t kern_stack_top;
+	volatile stack_addr_t syscall_return_address;
 
 	char task_name[KERN_TASK_NAME_SZ];
 
