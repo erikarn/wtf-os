@@ -104,5 +104,5 @@ flash: wtfos
 	st-flash --connect-under-reset write wtfos.bin 0x8000000
 
 clean:
-	rm -f $(C_OBJS) $(S_OBJS)
+	rm -f $(C_OBJS) $(S_OBJS) $(SS_OBJS)
 	rm -f wtfos.elf wtfos.bin
