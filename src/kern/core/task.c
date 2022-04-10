@@ -41,6 +41,17 @@ static uint8_t kern_test_stack[512] __attribute__ ((aligned(8))) = { 0 };
 static void _kern_task_set_state_locked(struct kern_task *task,
     kern_task_state_t new_state);
 
+static void
+kern_task_timer_ev_fn(kern_timer_event_t *ev, void *arg1,
+    uintptr_t arg2, uint32_t arg3)
+{
+	kern_task_id_t t;
+
+	t = kern_task_to_id(arg1);
+	console_printf("[kern] timer fired, task 0x%08x\n", t);
+	kern_task_signal(t, KERN_SIGNAL_TASK_KSLEEP);
+}
+
 /**
  * Initialise the given task structure.
  *
@@ -76,6 +87,10 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->is_static_task = true;
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
+
+	/* Timer setup */
+	kern_timer_event_setup(&task->sleep_ev, kern_task_timer_ev_fn, task,
+	    0, 0);
 
 	/*
 	 * Mark this task as idle, we haven't started it running.
@@ -129,6 +144,10 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	task->is_static_task = true;
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
+
+	/* Timer setup */
+	kern_timer_event_setup(&task->sleep_ev, kern_task_timer_ev_fn, task,
+	    0, 0);
 
 	/*
 	 * Mark this task as idle, we haven't started it running.
@@ -374,8 +393,8 @@ kern_test_task_fn(void)
 
 	console_printf("[test] started!\n");
 
-	/* Enable all signals for now */
-	kern_task_set_sigmask(0x11111111, 0x00000001);
+	/* Enable all task signals for now */
+	kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
 
 	/* Set up a single timer, fire it 1 second later */
 	kern_timer_event_setup(&ev, kern_test_task_timer_ev_fn, NULL, 0, 0);
@@ -568,6 +587,16 @@ kern_task_exit(void)
 {
 
 	console_printf("[task] %s: called\n", __func__);
+
+	/*
+	 * XXX TODO: we may need to block here until it's
+	 * finished running; remember these calls don't
+	 * guarantee success if the timer has actually
+	 * just fired.  I'll figure that out once I
+	 * have the timer task stuff plumbed in.
+	 */
+	kern_timer_event_del(&current_task->sleep_ev);
+	kern_timer_event_clean(&current_task->sleep_ev);
 
 	platform_spinlock_lock(&kern_task_spinlock);
 	kern_task_set_state_locked(KERN_TASK_STATE_DYING);

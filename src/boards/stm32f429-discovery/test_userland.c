@@ -35,6 +35,17 @@ static struct kern_task test_user_task;
 static uint8_t kern_test_user_u_stack[512] __attribute__ ((aligned(8))) = { 0 };
 static uint8_t kern_test_user_k_stack[512] __attribute__ ((aligned(8))) = { 0 };
 
+/*
+ * I'm not yet sure how I return a value here; it's quite possible
+ * I need to commit some more naked inline assembly sins to get everything
+ * lined up right.
+ */
+static __attribute__((noinline)) void
+syscall_test(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4)
+{
+	asm("svc #0x69");
+}
+
 /**
  * Until we can do SVC's, all we can really do here is spin!
  */
@@ -42,7 +53,11 @@ static void
 kern_test_user_task(void *arg)
 {
 	while (1) {
-		asm("svc #0");
+		/*
+		 * XXX TODO: looks like all six end up in the right spot
+		 * in the syscall handler?
+		 */
+		syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
 	}
 }
 

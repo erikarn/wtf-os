@@ -90,10 +90,14 @@ arm_m4_exception_set_pendsv(void)
 	os_reg_write32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_ICSR, val);
 }
 
+/**
+ * Syscall entry point from arm_m4_svc.S.
+ */
 uint32_t
 arm_m4_c_syscall_handler(uint32_t arg1, uint32_t arg2, uint32_t arg3,
-    uint32_t arg4, uint32_t arg5, uint32_t arg6)
+    uint32_t arg4)
 {
-//	console_printf("[syscall] called!\n");
+	console_printf("[syscall] called! 0x%x 0x%x 0x%x 0x%x\n",
+	    arg1, arg2, arg3, arg4);
 	return (0);
 }

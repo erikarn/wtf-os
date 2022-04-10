@@ -3,6 +3,7 @@
 
 #include <kern/libraries/list/list.h>
 #include <kern/core/signal.h>
+#include <kern/core/timer.h>
 
 typedef enum {
 	KERN_TASK_STATE_NONE = 0,
@@ -81,6 +82,9 @@ struct kern_task {
 	/* Current priority.  255 is the highest priority. */
 	uint8_t priority;
 	uint8_t pad0;
+
+	/* Timer for sleeping */
+	struct kern_timer_event sleep_ev;
 
 	/*
 	 * Current signal set and mask.

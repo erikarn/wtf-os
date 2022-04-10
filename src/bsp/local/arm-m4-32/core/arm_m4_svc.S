@@ -17,6 +17,11 @@
  * mode and returns to the original caller.
  *
  * r8 contains the original PC to jump back into.
+ *
+ * XXX TODO: can I /use/ r8 like this? I thought r8 needed to
+ * be preserved!  I may need to go and actually push r8
+ * onto the kernel stack in my svc handler and pop it before
+ * I return here.
  */
 
 arm_m4_syscall_handler:
@@ -40,19 +45,16 @@ arm_m4_syscall_handler:
 	/* Switch */
 	msr PSP, ip
 
-	/* Save r4, r5, and sp?, to complete our stack frame */
-	mov ip, sp
-	push {r4, r5, ip}
-
 	/* Branch to our syscall handler in C */
 	ldr ip, =arm_m4_c_syscall_handler
 	orrs ip, ip, #1
 	blx ip
+	/* Note: r0 has a return value now! */
 
 	/* restore LR */
-	ldr lr, [sp, #16]
+	ldr lr, [sp, #4]
 	/* restore SP to original unpriv stack location */
-	ldr ip, [sp, #12]
+	ldr ip, [sp, #0]
 	msr PSP, ip
 
 	/* Drop back to unpriv */
@@ -63,18 +65,18 @@ arm_m4_syscall_handler:
 	/* barrier - don't run next code in old priv */
 	isb
 
+	/* return back to original function, force thumb mode */
+	mov ip, r8
+	orrs ip, ip, #1
+
 	/* Zero out caller-saved registers to not leak state */
+	/* (leave r0, it has a 32 bit return value) */
 	mov r1, #0
 	mov r2, #0
 	mov r3, #0
 
-	/* return back to original function, force thumb mod e*/
-	mov ip, r8
-	orrs ip, ip, #1
+	/* Branch back */
 	bx ip
-
-	/* XXX TODO: put stack back to unpriv */
-
 .size arm_m4_syscall_handler, .-arm_m4_syscall_handler
 
 .section .text.arm_m4_svc_handler
@@ -89,13 +91,15 @@ arm_m4_syscall_handler:
  *
  * The stack frame saved in the exception is:
  *
- * r0, r1, r2, r3, r12, r14/LR, r15/PC, XPSR
+ * r0, r1, r2, r3, r12/IP, r14/LR, r15/PC, XPSR
  *
  * Entry /into/ the SVC handler we're going to jump
  * into looks like:
  *
- * r0, r1, r2, r3, r4, r5: arguments
- * r6: call id
+ * r0: 0x0
+ * r1: 0x0
+ * r2: 0x0
+ * r3: 0x0
  * r8: saved link register
  *
  * So, we can use r0, r1, r2, r3 as temporary
@@ -135,6 +139,12 @@ arm_m4_svc_handler:
 	 * previous privilege level.
 	 */
 	isb
+
+	/* Debug - clear these out to make sure I'm not leaking */
+	mov r0, #0
+	mov r1, #0
+	mov r2, #0
+	mov r3, #0
 
 	/*
 	 * Return from SVC exception (in handler mode) to our
