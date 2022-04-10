@@ -97,7 +97,9 @@ uint32_t
 arm_m4_c_syscall_handler(uint32_t arg1, uint32_t arg2, uint32_t arg3,
     uint32_t arg4)
 {
+#if 0
 	console_printf("[syscall] called! 0x%x 0x%x 0x%x 0x%x\n",
 	    arg1, arg2, arg3, arg4);
+#endif
 	return (0);
 }
