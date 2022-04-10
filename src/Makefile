@@ -64,6 +64,7 @@ SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/core/task.c
 SRCS += $(KERN_SUBDIR)/core/timer.c
 SRCS += $(KERN_SUBDIR)/core/physmem.c
+SRCS += $(KERN_SUBDIR)/syscalls/syscall.c
 
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c

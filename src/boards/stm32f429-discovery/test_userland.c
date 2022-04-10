@@ -43,7 +43,7 @@ static uint8_t kern_test_user_k_stack[512] __attribute__ ((aligned(8))) = { 0 };
 static __attribute__((noinline)) void
 syscall_test(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4)
 {
-	asm("svc #0x69");
+	asm("svc #0x01");
 }
 
 /**
@@ -52,12 +52,20 @@ syscall_test(uint32_t arg1, uint32_t arg2, uint32_t arg3, uint32_t arg4)
 static void
 kern_test_user_task(void *arg)
 {
+	uint32_t count = 0;
+	const char *teststr_1 = "test string 1!\r\n";
+	const char *teststr_2 = "test string 2!\r\n";
+
 	while (1) {
 		/*
 		 * XXX TODO: looks like all six end up in the right spot
 		 * in the syscall handler?
 		 */
-		syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
+		//syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
+
+		/* CONSOLE_WRITE syscall */
+		syscall_test(0x00000001, (uintptr_t) ((count & 1) ? teststr_1 : teststr_2), 16, 0);
+		count++;
 	}
 }
 
