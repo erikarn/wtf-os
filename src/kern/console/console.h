@@ -16,6 +16,7 @@ extern	void console_set_ops(struct console_ops *);
 
 extern	void console_putc(char c);
 extern	void console_puts(const char *s);
+extern	void console_putsn(const char *s, size_t len);
 extern	void console_flush(void);
 extern	void console_input(char c);
 
