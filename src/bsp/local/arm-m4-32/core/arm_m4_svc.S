@@ -65,15 +65,19 @@ arm_m4_syscall_handler:
 	/* barrier - don't run next code in old priv */
 	isb
 
-	/* return back to original function, force thumb mode */
-	mov ip, r8
-	orrs ip, ip, #1
-
 	/* Zero out caller-saved registers to not leak state */
 	/* (leave r0, it has a 32 bit return value) */
 	mov r1, #0
 	mov r2, #0
 	mov r3, #0
+
+	/*
+	 * Fetch the original function location, force thumb mode.
+	 */
+	ldr ip, =current_task
+	ldr ip, [ip]
+	ldr ip, [ip, #8]
+	orrs ip, ip, #1
 
 	/* Branch back */
 	bx ip
@@ -94,13 +98,13 @@ arm_m4_syscall_handler:
  * r0, r1, r2, r3, r12/IP, r14/LR, r15/PC, XPSR
  *
  * Entry /into/ the SVC handler we're going to jump
- * into looks like:
+ * into looks like (for debugging, so we don't reuse
+ * the values accidentally!)
  *
  * r0: 0x0
  * r1: 0x0
  * r2: 0x0
  * r3: 0x0
- * r8: saved link register
  *
  * So, we can use r0, r1, r2, r3 as temporary
  * registers; they'll be restored before the SVC
@@ -123,12 +127,22 @@ arm_m4_svc_handler:
 	mrs r2, CONTROL
 
 	/*
+	 * Get IP pointing to our current_task struct, we'll store our
+	 * current PC there.
+	 */
+	ldr ip, =current_task
+	ldr ip, [ip]
+
+	/*
 	 * When we jump into our syscall handler code, we have a few
 	 * other registers to setup as noted above.
 	 */
-	ldr r8, [r0, #24]	/* PC from stack frame */
+	ldr r1, [r0, #24]	/* PC from stack frame */
+	str r1, [ip, #8]	/* Third entry in struct - store return PC */
+
+	/* Overwrite the return PC */
 	ldr r1, =arm_m4_syscall_handler
-	str r1, [r0, #24]	/* Overwrite return PC */
+	str r1, [r0, #24]
 
 	/* Set mode to privileged for the return */
 	bic r2, #1
