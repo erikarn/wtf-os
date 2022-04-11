@@ -1,3 +1,22 @@
+/*
+ * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-Licence-Identifier: GPL-3.0-or-later
+ */
+
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -50,6 +69,37 @@ kern_task_timer_ev_fn(kern_timer_event_t *ev, void *arg1,
 	t = kern_task_to_id(arg1);
 	console_printf("[kern] timer fired, task 0x%08x\n", t);
 	kern_task_signal(t, KERN_SIGNAL_TASK_KSLEEP);
+}
+
+/**
+ * Set the task timer to fire after 'msec' milliseconds.
+ *
+ * For best behaviour this should be called from the task itself,
+ * not from other tasks.
+ *
+ * @param[in] task kernel task
+ * @param[in] msec milliseconds before firing
+ * @retval true if set, false if couldn't set (eg is about to run)
+ */
+bool
+kern_task_timer_set(struct kern_task *task, uint32_t msec)
+{
+	bool ret;
+
+	/*
+	 * XXX TODO: another place where it'd be nice if we could
+	 * sleep on a non-signal wakeup so we can wait until the
+	 * timer actually has fired and we've completed..
+	 *
+	 * XXX TODO: del/add here isn't atomic; we should extend
+	 * the timer API to let us do this cleanly under a single
+	 * timer call!
+	 */
+	ret = kern_timer_event_del(&task->sleep_ev);
+	if (ret == false)
+		return (false);
+	ret = kern_timer_event_add(&task->sleep_ev, msec);
+	return (ret);
 }
 
 /**
@@ -106,6 +156,9 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	    task->kern_stack + kern_stack_size,
 	    entry_point, NULL, false);
 	task->kern_stack_top = 0;
+
+	/* Default signal mask */
+	task->sig_mask = KERN_SIGNAL_TASK_MASK;
 
 	/*
 	 * Last, add it to the global list of tasks.
@@ -166,6 +219,9 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	    entry_point, arg, true);
 	/* And we program in our kernel stack for privileged code */
 	task->kern_stack_top = task->kern_stack + kern_stack_size;
+
+	/* Default signal mask */
+	task->sig_mask = KERN_SIGNAL_TASK_MASK;
 
 	/*
 	 * Last, add it to the global list of tasks, make it
@@ -374,37 +430,27 @@ kern_idle_task_fn(void)
 }
 
 static void
-kern_test_task_timer_ev_fn(kern_timer_event_t *ev, void *arg1,
-    uintptr_t arg2, uint32_t arg3)
-{
-	kern_task_id_t t;
-
-	console_printf("[test] timer fired!\n");
-	t = kern_task_to_id(&test_task);
-	kern_task_signal(t, 0x00000001);
-}
-
-static void
 kern_test_task_fn(void)
 {
 	kern_task_signal_set_t sig;
-	kern_timer_event_t ev;
 	int count = 0;
+	bool ret;
 
 	console_printf("[test] started!\n");
 
 	/* Enable all task signals for now */
 	kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
 
-	/* Set up a single timer, fire it 1 second later */
-	kern_timer_event_setup(&ev, kern_test_task_timer_ev_fn, NULL, 0, 0);
-
 	while (1) {
 		/* Wait every 5 seconds for now */
-		kern_timer_event_add(&ev, 5000);
+		ret = kern_task_timer_set(current_task, 5000);
+		if (ret == false) {
+			console_printf("[test] falied to add task timer?\n");
+			continue;
+		}
 		console_printf("[test] **** (tick=0x%08x), entering wait!\n",
 		    (uint32_t) kern_timer_tick_msec);
-		(void) kern_task_wait(0xffffffff, &sig);
+		(void) kern_task_wait(KERN_SIGNAL_TASK_KSLEEP, &sig);
 		/*
 		 * Uncomment this to have the task exit after 10 iterations.
 		 */
@@ -417,8 +463,6 @@ kern_test_task_fn(void)
 	}
 
 	console_printf("[test] Finishing!\n");
-	kern_timer_event_del(&ev);
-	kern_timer_event_clean(&ev);
 	kern_task_exit();
 }
 
@@ -432,7 +476,11 @@ _kern_task_set_state_locked(struct kern_task *task,
 {
 	bool do_ctx = false;
 
-	//console_printf("task %s state %d -> %d\n", task->task_name, task->cur_state, new_state);
+#if 0
+	console_printf("task %s state %d -> %d, active list=%d\n",
+	    task->task_name, task->cur_state, new_state,
+	    task->is_on_active_list);
+#endif
 
 	/* Update state, only do work if the state hasn't changed */
 	if (task->cur_state == new_state)
@@ -500,7 +548,6 @@ _kern_task_set_state_locked(struct kern_task *task,
 		    task, task->cur_state);
 		break;
 	}
-
 
 	/*
 	 * Remember, this won't DO the context switch until the critical
@@ -650,6 +697,11 @@ kern_task_wait(kern_task_signal_mask_t sig_mask,
 {
 	volatile kern_task_signal_set_t sigs;
 
+#if 0
+	console_printf("[task] wait: task=%x sig_mask=0x%08x\n",
+	    current_task, sig_mask);
+#endif
+
 	/*
 	 * This is a bit messy and I dislike it, but I'll do this
 	 * for initial bootstrapping.
@@ -716,7 +768,10 @@ _kern_task_state_valid_locked(struct kern_task *task)
 static void
 _kern_task_wakeup_locked(struct kern_task *task)
 {
-	//console_printf("task %s waking up, state is %d\n", task->task_name, task->cur_state);
+#if 0
+	console_printf("task %s waking up, state is %d\n", task->task_name,
+	    task->cur_state);
+#endif
 	if (task->cur_state == KERN_TASK_STATE_SLEEPING) {
 		_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
 	}
@@ -738,6 +793,9 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 {
 	struct kern_task *task;
 
+#if 0
+	console_printf("[task] task=0x%x sigset=0x%08x\n", task_id, sig_set);
+#endif
 	platform_spinlock_lock(&kern_task_spinlock);
 
 	/*
@@ -748,18 +806,29 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 
 	if (task == NULL) {
 		platform_spinlock_unlock(&kern_task_spinlock);
+		console_printf("[task] invalid task id 0x%x\n", task_id);
 		return (-1);
 	}
 
 	if (! _kern_task_state_valid_locked(task)) {
-		console_printf("invalid state (%d)\n", task->cur_state);
+		console_printf("[task] signal: invalid state (%d)\n",
+		    task->cur_state);
 		kern_task_refcount_dec(task);
 		platform_spinlock_unlock(&kern_task_spinlock);
 		return (-1);
 	}
 
 	task->sig_set |= sig_set;
+
+#if 0
+	console_printf("[task] signal: task id 0x%x sig_set 0x%x task"
+	    " sigset 0x%x, task sigmask 0x%x\n",
+	    task_id, sig_set, task->sig_set, task->sig_mask);
+#endif
 	if ((task->sig_set & task->sig_mask) != 0) {
+#if 0
+		console_printf("[task] signal: task id 0x%x wakeup\n", task_id);
+#endif
 		/*
 		 * Wake up the task if it's not sleeping.
 		 *

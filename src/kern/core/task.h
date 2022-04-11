@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-Licence-Identifier: GPL-3.0-or-later
+ */
 #ifndef	__KERN_TASK_H__
 #define	__KERN_TASK_H__
 
@@ -159,7 +177,14 @@ extern	void kern_task_exit(void);
 extern	void kern_task_kill(kern_task_id_t task_id);
 
 /**
- * Wait for a signal.  Only callable from the tsak itself.
+ * Set a timer for a task.  Only really callable from the task itself.
+ *
+ * @retval true if ok, false if couldn't set the timer.
+ */
+extern	bool kern_task_timer_set(struct kern_task *task, uint32_t msec);
+
+/**
+ * Wait for a signal.  Only callable from the task itself.
  *
  * @retval 0 if a signal was set (whether we waited or not).
  * @retval -1 if error.
