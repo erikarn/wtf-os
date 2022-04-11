@@ -64,7 +64,7 @@ list_add_tail(struct list_head *head, struct list_node *node)
 		head->tail = node;
 	} else {
 		/* List is empty */
-		node->next = NULL;
+		node->prev = NULL;
 		/* Also assume head is NULL here */
 		head->head = node;
 		head->tail = node;
