@@ -40,6 +40,10 @@ kern_syscall_handler(syscall_arg_t arg, syscall_arg_t arg2,
     syscall_arg_t arg3, syscall_arg_t arg4)
 {
 	uint16_t arg1, syscall_id;
+	bool ret;
+	uint32_t retval = -1;
+	kern_task_signal_set_t sig;
+
 	/*
 	 * arg1 on a 32 bit platform is defined as:
 	 *
@@ -58,9 +62,32 @@ kern_syscall_handler(syscall_arg_t arg, syscall_arg_t arg2,
 		 * Temporary syscall to write out data.
 		 */
 		console_putsn((const char *)(uintptr_t) arg2, (size_t) arg3);
+		retval = 0;
+		break;
+	case SYSCALL_ID_CONSOLE_SLEEP:
+		/*
+		 * Syscall to sleep for a given number of milliseconds.
+		 */
+		ret = kern_task_timer_set(current_task, (uint32_t) arg2);
+		if (ret == false) {
+			retval = -1;
+			break;
+		}
+
+		/*
+		 * XXX TODO: technically speaking we should be in a loop
+		 * until the timer comes through, OR we should just go
+		 * implement the kernel timer as a sleep list like BSD.
+		 * This'll do for now.
+		 */
+		sig = 0;
+		(void) kern_task_wait(KERN_SIGNAL_TASK_KSLEEP, &sig);
+		retval = 0;
+		break;
 	default:
+		retval = -1;
 		break;
 	}
 
-	return (-1);	/* XXX TODO: should define an appropriate error code */
+	return (retval);
 }
