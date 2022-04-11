@@ -1,3 +1,21 @@
+/*
+ * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * SPDX-Licence-Identifier: GPL-3.0-or-later
+ */
 #include <stddef.h>
 #include <stdarg.h>
 #include <stdbool.h>
@@ -134,12 +152,11 @@ void
 kern_timer_tick(void)
 {
 	struct list_head list;
-	struct list_node *n;
+	struct list_node *n, *m;
 	kern_timer_event_t *e;
 
 	list_head_init(&list);
 
-	/* XXX TODO: do we REALLY need a spinlock here? */
 	platform_spinlock_lock(&timer_lock);
 	kern_timer_tick_msec += kern_timer_msec;
 
@@ -152,7 +169,9 @@ kern_timer_tick(void)
 		e = container_of(n, kern_timer_event_t, node);
 		if (kern_timer_before_eq(e->tick, kern_timer_tick_msec)) {
 			list_delete(&timer_list, n);
-			e->added = false;
+			/* We're not on the queue now, but we're active! */
+			e->queued = false;
+			e->active = true;
 			list_add_tail(&list, n);
 		} else {
 			break;
@@ -160,12 +179,82 @@ kern_timer_tick(void)
 	}
 	platform_spinlock_unlock(&timer_lock);
 
-	/* Outside of the timer lock - go run the events */
+	/*
+	 * Outside of the timer lock - go run the events.
+	 *
+	 * This is hairy and one of the dirty places I don't like.
+	 *
+	 * It's also why I explicitly have stated that the timer
+	 * add/delete can only be done by the owning task and not
+	 * external tasks.
+	 *
+	 * Now here's why.
+	 *
+	 * - I want to ensure that events aren't re-added or deleted
+	 *   whilst we're running the above and below loops.
+	 *   Now, the above is fixed by having queued/active, but
+	 *   we still need to transition active from true->false at
+	 *   some point.
+	 * - If we set it to false /after/ the callback, then the
+	 *   timer won't be re-armable by the function itself.
+	 *   Eg, all the timer can do is do a wakeup or a signal
+	 *   to the owning task, and then said task has to do the
+	 *   rest of the gruntwork with the timer.
+	 * - If we set it to false /before/ the callback, then
+	 *   the timer /will/ be re-armable by the function itself,
+	 *   but there's no nice cleanly atomic/locked state machine
+	 *   to ensure it's not re-armed before the callback completes.
+	 *   (eg if it's pre-empted by something else.)
+	 *
+	 * So I'm going with a bit of a hybrid, but documented method.
+	 * Here goes.
+	 *
+	 * - The running state will be updated /after/ the timer fires,
+	 *   under a lock.
+	 * - The function itself can't call timer_del or timer_add.
+	 * - But the function itself /can/ call timer_rearm_in_callback,
+	 *   which is a function designed to explicitly be called from
+	 *   inside the function callback itself to rearm the timer.
+	 *   It'll ignore that it's running because we know it is.
+	 */
+
+	/*
+	 * Ok, walk the list of timers, don't delete them from the
+	 * list or update their active state.
+	 */
 	for (n = list.head; n != NULL; n = n->next) {
 		e = container_of(n, kern_timer_event_t, node);
-		list_delete(&list, n);
 		e->fn(e, e->arg1, e->arg2, e->arg3);
 	}
+
+	/*
+	 * Now walk the same list, deleting them this time, but
+	 * if re-arm is set then we explicitly re-add them with
+	 * the given msec value.
+	 *
+	 * Since we may delete any entry in the list, we need
+	 * to walk it safely.. :-)
+	 */
+	platform_spinlock_lock(&timer_lock);
+	for (n = list.head; n != NULL; n = m) {
+		/*
+		 * For now I'm going to super cheat and not put it
+		 * in one for loop construct because it's late.
+		 * Once this works then yes, yes I should.
+		 */
+		m = n->next;
+
+		e = container_of(n, kern_timer_event_t, node);
+		e->queued = false;
+		e->active = false;
+		list_delete(&list, n);
+
+		if (e->rearm == true) {
+			console_printf("[timer] TODO: implement re-arm!\n");
+			e->rearm = false;
+		}
+	}
+	platform_spinlock_unlock(&timer_lock);
 }
 
 /**
@@ -231,7 +320,9 @@ kern_timer_event_setup(kern_timer_event_t *event,
 	event->arg2 = arg2;
 	event->arg3 = arg3;
 	event->tick = 0;
-	event->added = false;
+	event->queued = false;
+	event->active = false;
+	event->rearm = false;
 	list_node_init(&event->node);
 }
 
@@ -251,6 +342,10 @@ kern_timer_event_clean(kern_timer_event_t *event)
 /**
  * Add the given event to fire after msec milliseconds.
  *
+ * An event can only be added if it is not queued/active.
+ * Otherwise it's likely on a list somewhere and we'll
+ * be in trouble.
+ *
  * @param[event] timer event to add
  * @param[msec] milliseconds after now before firing
  * @retval true if added, false if not added
@@ -261,8 +356,14 @@ kern_timer_event_add(kern_timer_event_t *event, uint32_t msec)
 	struct list_node *n;
 	kern_timer_event_t *e;
 	uint32_t abs_msec = msec + kern_timer_tick_msec;
+	bool ret = true;
 
 	platform_spinlock_lock(&timer_lock);
+
+	if ((event->active == true) || (event->queued == true)) {
+		ret = false;
+		goto error;
+	}
 
 	/* Quick check - is list empty? add it to head, exit */
 	if (list_is_empty(&timer_list)) {
@@ -277,11 +378,17 @@ kern_timer_event_add(kern_timer_event_t *event, uint32_t msec)
 			break;
 	}
 
-	list_add_before(&timer_list, n, &event->node);
+	if (n == NULL) {
+		list_add_tail(&timer_list, &event->node);
+	} else {
+		list_add_before(&timer_list, n, &event->node);
+	}
 
 done:
 	event->tick = abs_msec;
-	event->added = true;
+	event->queued = true;
+	event->active = false;
+	event->rearm = false;
 
 	/*
 	 * If we need to start the timer, start the timer.
@@ -290,18 +397,17 @@ done:
 		kern_timer_start_locked();
 	}
 
+error:
 	platform_spinlock_unlock(&timer_lock);
-	return (true);
+	return (ret);
 }
 
 /**
  * Delete the given timer event.
  *
- * An event can only be deleted if it's pending.
- * If it's active or about to be active (ie, it's deleted
- * from the timer list and either not present or about
- * to be run) then it can't be canceled/deleted here,
- * and 'false' will be returned.
+ * An event can only be deleted if it's either not on the list,
+ * or if it's queued but not running.  If it's running then
+ * it's too late to delete; we can't cancel it.
  *
  * @param[in] event Event to delete
  * @retval true if the event was deleted before run;
@@ -313,16 +419,25 @@ kern_timer_event_del(kern_timer_event_t *event)
 	bool ret = false;
 
 	platform_spinlock_lock(&timer_lock);
-	/*
-	 * We only delete events that are in the list.
-	 * If they're not in the list (eg not added, or
-	 * they're running) then we return false;
-	 */
-	if (event->added == true) {
-		list_delete(&timer_list, &event->node);
-		event->added = false;
+
+	/* not on the list, not running, we can "delete" */
+	if ((event->active == false) && (event->queued == false)) {
 		ret = true;
+		goto done;
 	}
+
+	/* it's on the list, but not active, we can cancel it here */
+	if ((event->active == false) && (event->queued == true)) {
+		list_delete(&timer_list, &event->node);
+		event->queued = false;
+		event->active = false;
+		ret = true;
+		goto done;
+	}
+
+	/* Otherwise at this point it isn't cancelable */
+
+done:
 	platform_spinlock_unlock(&timer_lock);
 
 	return (ret);
