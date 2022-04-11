@@ -61,10 +61,13 @@ kern_test_user_task(void *arg)
 		 * XXX TODO: looks like all six end up in the right spot
 		 * in the syscall handler?
 		 */
-		//syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
+		syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
 
 		/* CONSOLE_WRITE syscall */
 		syscall_test(0x00000001, (uintptr_t) ((count & 1) ? teststr_1 : teststr_2), 16, 0);
+
+		/* TIMER_SLEEP syscall, 1 sec */
+		syscall_test(0x00000002, 1000, 0, 0);
 		count++;
 	}
 }

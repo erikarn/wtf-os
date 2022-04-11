@@ -166,6 +166,13 @@ USART1_IRQHandler(void)
 	}
 }
 
+void
+toggle_leds(void)
+{
+	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
+	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
+}
+
 /**
  * External interrupt 0, used for GPIOA0 and the input button press.
  */
@@ -174,8 +181,7 @@ EXTI0_IRQHandler(void)
 {
 	console_printf("[button] pressed!\n");
 	stm32f429_hw_exti_ack_pending_interrupt(0);
-	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
-	stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 14);
+	toggle_leds();
 }
 
 void
