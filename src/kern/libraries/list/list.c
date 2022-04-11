@@ -117,6 +117,8 @@ list_delete(struct list_head *head, struct list_node *node)
 	if (node->prev != NULL) {
 		node->prev->next = node->next;
 	}
+	node->next = NULL;
+	node->prev = NULL;
 }
 
 bool
