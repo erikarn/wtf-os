@@ -32,8 +32,6 @@
 
 
 static struct kern_task test_user_task;
-static uint8_t kern_test_user_u_stack[512] __attribute__ ((aligned(8))) = { 0 };
-static uint8_t kern_test_user_k_stack[512] __attribute__ ((aligned(8))) = { 0 };
 
 /*
  * I'm not yet sure how I return a value here; it's quite possible
@@ -75,11 +73,17 @@ kern_test_user_task(void *arg)
 void
 setup_test_userland_task(void)
 {
+	paddr_t kern_stack, user_stack;
+
+	/* XXX TODO: check for retval=0 */
+	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	user_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+
 	kern_task_user_start(&test_user_task, kern_test_user_task, NULL,
 	    "user_task",
-	    (stack_addr_t) kern_test_user_k_stack,
-	    sizeof(kern_test_user_k_stack),
-	    (stack_addr_t) kern_test_user_u_stack,
-	    sizeof(kern_test_user_u_stack));
+	    (stack_addr_t) kern_stack,
+	    512,
+	    (stack_addr_t) user_stack,
+	    512);
 }
 
