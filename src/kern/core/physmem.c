@@ -28,6 +28,7 @@
 #include <kern/libraries/container/container.h>
 #include <kern/libraries/list/list.h>
 
+#include <kern/core/exception.h>
 #include <kern/core/physmem.h>
 #include <kern/console/console.h>
 
@@ -48,9 +49,9 @@ uint32_t num_kern_physmem_range_bootstrap_entries;
 
 struct kern_physmem_free_entry {
 	/*
-	 * XXX TODO maybe do some magic value based on
-	 * physical address here!
+	 * Magic value based on address and start and size.
 	 */
+	uint32_t magic;
 	bool is_free;
 	struct list_node node;
 	paddr_t start; /* Start of free entry incl this header */
@@ -61,6 +62,26 @@ static struct list_head kern_physmem_free_list;
 
 static platform_spinlock_t kern_physmem_spinlock;
 
+static uint32_t
+kern_physmem_magic_calculate(const struct kern_physmem_free_entry *e)
+{
+	uint32_t magic;
+
+	magic = 0x9e3779b9;
+	magic ^= e->start;
+	magic ^= e->size;
+
+	return (magic);
+}
+
+static bool
+kern_physmem_magic_verify(const struct kern_physmem_free_entry *e)
+{
+	uint32_t magic;
+
+	magic = kern_physmem_magic_calculate(e);
+	return (magic == e->magic);
+}
 
 /**
  * Initialise the physical memory allocator.
@@ -70,6 +91,21 @@ kern_physmem_init(void)
 {
 	list_head_init(&kern_physmem_free_list);
 	platform_spinlock_init(&kern_physmem_spinlock);
+}
+
+static struct kern_physmem_free_entry *
+kern_physmem_init_memory_region_node(paddr_t start, paddr_t size)
+{
+	struct kern_physmem_free_entry *e;
+
+	e = (struct kern_physmem_free_entry *)(void *)(uintptr_t) start;
+	e->start = start;
+	e->size = size;
+	e->is_free = true;
+	e->magic = kern_physmem_magic_calculate(e);
+	list_node_init(&e->node);
+
+	return (e);
 }
 
 /**
@@ -85,11 +121,9 @@ kern_physmem_add_to_free_list_locked(paddr_t start, paddr_t size)
 	console_printf("[physmem] [freelist] adding 0x%x -> 0x%x (%d bytes)\n",
 	    (uint32_t) start, (uint32_t) (start + size), size);
 
-	e = (struct kern_physmem_free_entry *)(void *)(uintptr_t) start;
-	e->start = start;
-	e->size = size;
+	e = kern_physmem_init_memory_region_node(start, size);
 	e->is_free = true;
-	list_node_init(&e->node);
+
 	list_add_tail(&kern_physmem_free_list, &e->node);
 }
 
@@ -173,6 +207,9 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 	struct list_node *n;
 	paddr_t retaddr = 0;
 
+	console_printf("[physmem] [malloc] called, size=%d alignment=%d flags=0x%08x\n",
+	    (int) size, alignment, flags);
+
 	/*
 	 * Ensure we're not being asked for tiny allocations.
 	 * Those should use a zone allocator API.
@@ -191,6 +228,12 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 		uintptr_t alloc_start, alloc_size, e_start, e_size;
 
 		e = container_of(n, struct kern_physmem_free_entry, node);
+
+#if 1
+		if (! kern_physmem_magic_verify(e)) {
+			console_printf("%s: magic failed\n", __func__);
+		}
+#endif
 
 		/*
 		 * If we want to consider this block as a valid block
@@ -216,7 +259,9 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 
 		/* Start with 'start' pointing to e + 1 */
 		alloc_start = (uintptr_t)(e + 1);
-		alloc_size = size;
+		alloc_size = size + sizeof(*e);
+
+		console_printf("[physmem] e=0x%x, alloc_start=0x%08x, size=%d\n", e, alloc_start, alloc_size);
 
 		/* Figure out alignment, bump start as needed */
 		if (alignment != 0) {
@@ -225,6 +270,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			alloc_start += m;
 			alloc_size += m;
 		}
+
+		console_printf("[physmem] post alignment: alloc_start=0x%08x, size=%d\n", alloc_start, alloc_size);
 
 		/*
 		 * See if the allocation fits within the range
@@ -293,6 +340,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 		e = (void *) (((char *)alloc_start) - sizeof(*e));
 		e->start = e_start;
 		e->size = e_size;
+		e->magic = kern_physmem_magic_calculate(e);
+		e->is_free = false;
 		list_node_init(&e->node);
 		retaddr = alloc_start;
 
@@ -304,4 +353,66 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 	console_printf("[physmem] return 0x%08x\n", retaddr);
 
 	return retaddr;
+}
+
+/**
+ * Free the given physical memory block; coalesce with blocks on either
+ * side at some point.
+ *
+ * This is an O(n) free as we need to find the right spot in the freelist
+ * to insert so we can then coalesce.
+ */
+void
+kern_physmem_free(paddr_t addr)
+{
+	struct kern_physmem_free_entry *e;
+	struct list_node *n;
+
+	platform_spinlock_lock(&kern_physmem_spinlock);
+	/* Get the metadata */
+	e = (void *) (uintptr_t) addr;
+	e = e - 1;
+
+	if (! kern_physmem_magic_verify(e)) {
+		console_printf("%s: magic failed\n", __func__);
+	}
+
+	console_printf("[physmem] [free] addr 0x%x, block=0x%x, %d bytes\n",
+	    addr, e->start, e->size);
+
+	/*
+	 * Find where to put the block in the list so we can eventually
+	 * coalesce.
+	 */
+	for (n = kern_physmem_free_list.head; n != NULL; n = n->next) {
+		struct kern_physmem_free_entry *ee;
+
+		ee = container_of(n, struct kern_physmem_free_entry, node);
+
+		if (! kern_physmem_magic_verify(ee)) {
+			console_printf("%s: magic failed\n", __func__);
+		}
+
+		if (ee->start > e->start)
+			break;
+	}
+
+	/*
+	 * The node itself may not be /at/ the beginning of the
+	 * memory region due to alignment.
+	 * So, we need to reinitialise it back at the beginning.
+	 */
+	e = kern_physmem_init_memory_region_node(e->start, e->size);
+	e->is_free = true;
+
+	if (n == NULL) {
+		list_add_head(&kern_physmem_free_list, &e->node);
+	} else {
+		list_add_before(&kern_physmem_free_list, n, &e->node);
+	}
+
+	/* See if we can coalesce! */
+	/* XXX TODO */
+
+	platform_spinlock_unlock(&kern_physmem_spinlock);
 }

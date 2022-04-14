@@ -53,5 +53,6 @@ extern	void kern_physmem_add_range(paddr_t start, paddr_t end,
 
 extern	paddr_t kern_physmem_alloc(size_t size, uint32_t alignment,
 	    uint32_t flags);
+extern	void kern_physmem_free(paddr_t addr);
 
 #endif	/* __KERN_PHYSMEM_H__ */
