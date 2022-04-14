@@ -309,6 +309,13 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			/*
 			 * Calculate what's left over, adjust e_size
 			 * appropriately and add the rest to the freelist.
+			 *
+			 * XXX TODO: this needs to be O(n) inserted back
+			 * into the right place, or a special function
+			 * to specifically fragment it in-place.
+			 * This will add the fragmented block into the
+			 * end of the freelist, which isn't what we
+			 * want.
 			 */
 			kern_physmem_add_to_free_list_locked(
 			    e_start + alloc_size,
@@ -412,7 +419,7 @@ kern_physmem_free(paddr_t addr)
 	}
 
 	/* See if we can coalesce! */
-	/* XXX TODO */
+	/* XXX TODO - also need to fix the fragmenting logic in kern_physmem_alloc() */
 
 	platform_spinlock_unlock(&kern_physmem_spinlock);
 }
