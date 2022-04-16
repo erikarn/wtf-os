@@ -17,33 +17,14 @@
  * SPDX-Licence-Identifier: GPL-3.0-or-later
  */
 
-#ifndef	__ARM_M4_HW_TYPES_H__
-#define	__ARM_M4_HW_TYPES_H__
+#ifndef	__PLATFORM_USER_RAM_ACCESS_H__
+#define	__PLATFORM_USER_RAM_ACCESS_H__
 
-#include <stdint.h>
+extern	bool platform_user_ram_copy_from_user(const uaddr_t uaddr,
+	    paddr_t paddr, uint32_t len);
+extern	bool platform_user_ram_copy_to_user(const paddr_t paddr,
+	    uaddr_t uaddr, uint32_t len);
+extern	bool platform_user_ram_read_byte_from_user(const uaddr_t uaddr,
+	    uint8_t *dst);
 
-/* Note: for M4, there's no virtual address types */
-
-/* Physical address */
-typedef uint32_t paddr_t;
-
-/* stack address for kernel/userland */
-typedef uint32_t stack_addr_t;
-
-/* user address */
-typedef uint32_t uaddr_t;
-
-/* kernel memory for executable code */
-typedef uint32_t kern_code_exec_addr_t;
-typedef uint32_t kern_code_stack_addr_t;
-
-/* type for saving/restoring IRQ state */
-typedef uint32_t irq_save_t;
-
-/* syscall arg field (eg if registers) */
-typedef uint32_t syscall_arg_t;
-
-/* syscall return value field (eg if registers) */
-typedef uint32_t syscall_retval_t;
-
-#endif	/* __ARM_M4_HW_TYPES_H__ */
+#endif	/* __PLATFORM_USER_RAM_ACCESS_H__ */

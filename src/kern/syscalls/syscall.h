@@ -29,6 +29,8 @@
  * arg4 - na
  */
 #define	SYSCALL_ID_CONSOLE_WRITE		0x0001
+extern	syscall_retval_t kern_syscall_putsn(syscall_arg_t arg1,
+	    syscall_arg_t arg2, syscall_arg_t arg3, syscall_arg_t arg4);
 
 /*
  * Sleep for n milliseconds
@@ -39,6 +41,9 @@
  * arg4 - na
  */
 #define	SYSCALL_ID_CONSOLE_SLEEP		0x0002
+
+extern	syscall_retval_t kern_syscall_sleep(syscall_arg_t arg1,
+	    syscall_arg_t arg2, syscall_arg_t arg3, syscall_arg_t arg4);
 
 #define	SYSCALL_ID_CONSOLE_WAIT			0x0003
 

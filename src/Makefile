@@ -53,6 +53,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_userram_access.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
@@ -65,6 +66,8 @@ SRCS += $(KERN_SUBDIR)/core/task.c
 SRCS += $(KERN_SUBDIR)/core/timer.c
 SRCS += $(KERN_SUBDIR)/core/physmem.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall.c
+SRCS += $(KERN_SUBDIR)/syscalls/syscall_putsn.c
+SRCS += $(KERN_SUBDIR)/syscalls/syscall_sleep.c
 
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
