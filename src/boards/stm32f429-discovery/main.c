@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
  *
@@ -44,6 +45,7 @@
 /* resource paks */
 #include "kern/flash/flash_resource_header.h"
 #include "kern/flash/flash_resource_pak.h"
+#include "kern/ipc/port.h"
 
 #include "core/platform.h"
 #include "core/lock.h"
@@ -242,6 +244,9 @@ main(void)
 
     /* Kernel physmem allocator */
     kern_physmem_init();
+
+    /* IPC init */
+    kern_ipc_port_init();
 
     /* do post CPU init interrupt enable for things like USART */
     /* (yeah a hack for now) */
