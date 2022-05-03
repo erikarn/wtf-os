@@ -20,6 +20,8 @@
 #ifndef	__KERN_CORE_PORT_H__
 #define	__KERN_CORE_PORT_H__
 
+#include <kern/core/task_defs.h>
+
 struct kern_ipc_port;
 
 /*
@@ -48,6 +50,13 @@ typedef enum {
 } kern_ipc_port_state_t;
 
 struct kern_ipc_port {
+
+	/*
+	 * XXX TODO: for now I'm going to cheat and just put ports
+	 * as being owned directly by tasks.  I'd like to add an
+	 * ownership list abstraction, but not today.
+	 */
+	kern_task_id_t owner_task;
 
 	/* Node on an ownership list (eg task) */
 	struct list_node owner_node;
@@ -101,5 +110,17 @@ struct kern_ipc_port {
 };
 
 extern	void kern_ipc_port_init(void);
+extern	bool kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task);
+extern	bool kern_ipc_port_set_active(struct kern_ipc_port *port);
+extern	void kern_ipc_port_shutdown(struct kern_ipc_port *port);
+extern	bool kern_ipc_port_close(struct kern_ipc_port *port);
+extern	bool kern_ipc_port_link(struct kern_ipc_port *port_lcl,
+    struct kern_ipc_port *port_rem);
+extern	bool kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
+    struct kern_ipc_msg *msg);
+extern	struct kern_ipc_msg * kern_port_fetch_receive_msg(struct kern_ipc_port *port);
+extern	struct kern_ipc_msg * kern_port_fetch_completed_msg(struct kern_ipc_port *port);
+extern	bool kern_port_set_msg_completed(struct kern_ipc_msg *msg);
+extern	struct kern_ipc_msg * kern_port_receive_message( struct kern_ipc_port *lcl_port);
 
 #endif	/* __KERN_CORE_PORT_H__ */

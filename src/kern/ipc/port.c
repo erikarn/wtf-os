@@ -31,6 +31,9 @@
 #include <kern/console/console.h>
 
 #include <kern/core/exception.h>
+#include <kern/core/task_defs.h>
+#include <kern/core/task.h>
+#include <kern/core/signal.h>
 
 #include <kern/ipc/port.h>
 #include <kern/ipc/msg.h>
@@ -51,7 +54,7 @@ kern_ipc_port_init(void)
  * connected to any remote port.
  */
 bool
-kern_ipc_port_setup(struct kern_ipc_port *port)
+kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 {
 	list_node_init(&port->owner_node);
 	list_node_init(&port->recv_notif_node);
@@ -67,6 +70,8 @@ kern_ipc_port_setup(struct kern_ipc_port *port)
 	list_head_init(&port->compl_msg.list);
 	port->compl_msg.num = 0;
 	port->compl_msg.max = 8;
+
+	port->owner_task = task;
 
 	return (true);
 }
@@ -97,6 +102,7 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_SHUTDOWN;
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+
 	/*
 	 * XXX TODO: need to inform the remote peer, if one exists,
 	 * that we've shutdown.
@@ -223,9 +229,19 @@ kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
 	rem_port->recv_msg.num++;
 	msg->state = KERN_IPC_MSG_STATE_QUEUED;
 
-	/* XXX TODO: notify receiver port */
+	/* Notify receiver port */
+	/*
+	 * XXX TODO: I don't like it being done inside
+	 * the kern IPC spinlock; ideally we'd have a way
+	 * to ensure that the local/rem port isn't going
+	 * to go away whilst we do operations (eg refcounting)
+	 * but we don't have that right now.
+	 */
+	kern_task_signal(rem_port->owner_task,
+	    KERN_SIGNAL_TASK_WAIT_PORT_RXREADY);
 
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+
 	return (true);
 
 error:
@@ -321,7 +337,6 @@ kern_port_set_msg_completed(struct kern_ipc_msg *msg)
 	/* XXX TODO: ensure that this message isn't on any other list */
 	port = msg->src_port;
 
-
 	list_add_tail(&port->compl_msg.list, &msg->msg_node);
 	port->compl_msg.num++;
 	msg->state = KERN_IPC_MSG_STATE_COMPLETED;
@@ -329,5 +344,71 @@ kern_port_set_msg_completed(struct kern_ipc_msg *msg)
 	/* XXX TODO: wakeup receiver port w/ completion notification */
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
+	/* Notify receiver port */
+	kern_task_signal(port->owner_task,
+	    KERN_SIGNAL_TASK_WAIT_PORT_RXREADY);
+
 	return (true);
+}
+
+
+/**
+ * Receive a message on the given port, and block (without timeout for now)
+ * until it's completed.
+ *
+ * This (for now!) receives both receive messages /and/ message completions;
+ * the caller should check to see what they're getting.
+ */
+struct kern_ipc_msg *
+kern_port_receive_message(struct kern_ipc_port *lcl_port)
+{
+	struct kern_ipc_msg *msg = NULL;
+	kern_task_signal_mask_t sigmask, sig;
+
+	/*
+	 * Save the current signal set for this task, and set RXREADY
+	 */
+	sigmask = kern_task_get_sigmask() & KERN_SIGNAL_TASK_WAIT_PORT_RXREADY;
+	kern_task_set_sigmask(KERN_SIGNAL_ALL_MASK,
+	    KERN_SIGNAL_TASK_WAIT_PORT_RXREADY);
+
+	/*
+	 * Attempt to dequeue a message.  If we succeed here then great!
+	 */
+	do {
+		msg = kern_port_fetch_completed_msg(lcl_port);
+		if (msg != NULL)
+			break;
+		msg = kern_port_fetch_receive_msg(lcl_port);
+		if (msg != NULL)
+			break;
+
+		/*
+		 * We failed to receive.  Now, this could be because
+		 * we don't have a peer or some other non-queue-empty
+		 * error.  But, as we don't YET have error codes here,
+		 * all I can do is sleep.
+		 *
+		 * So, let's sleep on that signal until we're woken up.
+		 * Later on I'll go implement kernel wide error codes
+		 * and we can start sprinkling them here.
+		 */
+		kern_task_wait(KERN_SIGNAL_TASK_WAIT_PORT_RXREADY, &sig);
+
+		/*
+		 * If we eventually do timer related stuff then we should
+		 * handle the timer signal here.
+		 */
+
+	} while (1);
+
+	/*
+	 * Restore signal mask - leave the RXREADY bit set if was already
+	 * set, else clear it.
+	 */
+	kern_task_set_sigmask(KERN_SIGNAL_ALL_MASK &
+	    ~(KERN_SIGNAL_TASK_WAIT_PORT_RXREADY),
+	    sigmask);
+
+	return (msg);
 }

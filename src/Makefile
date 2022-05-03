@@ -76,6 +76,7 @@ SRCS += $(KERN_SUBDIR)/core/physmem.c
 SRCS += $(KERN_SUBDIR)/core/logging.c
 SRCS += $(KERN_SUBDIR)/core/malloc.c
 SRCS += $(KERN_SUBDIR)/ipc/port.c
+SRCS += $(KERN_SUBDIR)/ipc/port_task.c
 SRCS += $(KERN_SUBDIR)/ipc/msg.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall_putsn.c
