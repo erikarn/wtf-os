@@ -77,8 +77,9 @@ kern_ipc_port_setup(struct kern_ipc_port *port)
 bool
 kern_ipc_port_set_active(struct kern_ipc_port *port)
 {
-
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_RUNNING;
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	return (true);
 }
 
@@ -93,7 +94,9 @@ void
 kern_ipc_port_shutdown(struct kern_ipc_port *port)
 {
 	console_printf("%s: TODO\n");
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_SHUTDOWN;
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	/*
 	 * XXX TODO: need to inform the remote peer, if one exists,
 	 * that we've shutdown.
@@ -116,7 +119,9 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 	 * through the shutdown state?
 	 */
 
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_CLOSED;
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	/*
 	 * XXX TODO: need to inform the remote peer, if one exists,
 	 * that we've closed, disconnecting from the peer.
@@ -137,20 +142,26 @@ bool
 kern_ipc_port_link(struct kern_ipc_port *port_lcl,
     struct kern_ipc_port *port_rem)
 {
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
 	if (port_lcl->peer != NULL) {
-		return (false);
+		goto error;
 	}
 
 	if (port_rem->peer != NULL) {
-		return (false);
+		goto error;
 	}
 
 	/* XXX TODO: notify? */
 
 	port_lcl->peer = port_rem;
 	port_rem->peer = port_lcl;
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	return (true);
+error:
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+	return (false);
 }
 
 /**
@@ -188,6 +199,8 @@ kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
 {
 	struct kern_ipc_port *rem_port;
 
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
 	/* Check if we have a peer */
 	if (lcl_port->peer == NULL) {
 		goto error;
@@ -212,9 +225,11 @@ kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
 
 	/* XXX TODO: notify receiver port */
 
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	return (true);
 
 error:
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	return (false);
 }
 
@@ -229,7 +244,10 @@ kern_port_fetch_receive_msg(struct kern_ipc_port *port)
 	struct list_node *node;
 	struct kern_ipc_msg *msg;
 
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
 	if (list_is_empty(&port->recv_msg.list)) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
 		return (NULL);
 	}
 
@@ -237,6 +255,8 @@ kern_port_fetch_receive_msg(struct kern_ipc_port *port)
 
 	list_delete(&port->recv_msg.list, node);
 	port->recv_msg.num--;
+
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	msg = container_of(node, struct kern_ipc_msg, msg_node);
 	msg->state = KERN_IPC_MSG_STATE_RECEIVED;
@@ -257,7 +277,10 @@ kern_port_fetch_completed_msg(struct kern_ipc_port *port)
 	struct list_node *node;
 	struct kern_ipc_msg *msg;
 
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
 	if (list_is_empty(&port->compl_msg.list)) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
 		return (NULL);
 	}
 
@@ -265,6 +288,8 @@ kern_port_fetch_completed_msg(struct kern_ipc_port *port)
 
 	list_delete(&port->compl_msg.list, node);
 	port->compl_msg.num--;
+
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	msg = container_of(node, struct kern_ipc_msg, msg_node);
 	msg->state = KERN_IPC_MSG_STATE_FINISHED;
@@ -291,14 +316,18 @@ kern_port_set_msg_completed(struct kern_ipc_msg *msg)
 {
 	struct kern_ipc_port *port;
 
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
 	/* XXX TODO: ensure that this message isn't on any other list */
 	port = msg->src_port;
+
 
 	list_add_tail(&port->compl_msg.list, &msg->msg_node);
 	port->compl_msg.num++;
 	msg->state = KERN_IPC_MSG_STATE_COMPLETED;
 
 	/* XXX TODO: wakeup receiver port w/ completion notification */
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	return (true);
 }
