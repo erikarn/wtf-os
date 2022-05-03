@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
  *
@@ -378,6 +379,8 @@ static void
 kern_task_cleanup(struct kern_task *task)
 {
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
+
+	/* XXX TODO: shut down, clean up messages, ports, etc. */
 
 	/* Clean up memory regions where required */
 	kern_task_mem_cleanup(&task->task_mem);
