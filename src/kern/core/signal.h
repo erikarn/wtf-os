@@ -42,10 +42,18 @@ typedef uint32_t kern_task_signal_set_t;
  *          for tasks will get cleaned up in kern_task_exit().  If a
  *          task doesn't handle this signal then at some point ("when"
  *          is a great question here!) it will be terminated anyway.
+ *
+ * WAIT_PORT_RXREADY - The task is waiting for a specific port to recive
+ *          a frame or a completion frame.  This is designed to be used
+ *          by code that wishes to block on a single port for received
+ *          events; later on I'll implement some kind of notification
+ *          "thing" that ports can push their notifications into so
+ *          tasks (user and kernel) can wait for multiple "things" at once.
  */
 #define	KERN_SIGNAL_ALL_MASK			0xffffffff
 #define	KERN_SIGNAL_TASK_MASK			0x000000ff
 #define	KERN_SIGNAL_TASK_KSLEEP			BIT_U32(0)
 #define	KERN_SIGNAL_TASK_TERMINATE		BIT_U32(1)
+#define	KERN_SIGNAL_TASK_WAIT_PORT_RXREADY	BIT_U32(2)
 
 #endif	/* __KERN_SIGNAL_H__ */
