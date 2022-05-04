@@ -62,7 +62,7 @@ struct kern_ipc_msg {
 	kern_ipc_msg_size_t msg_size;
 };
 
-extern	struct kern_ipc_msg * kern_msg_allocate(uint32_t msg_size);
-extern	void kern_msg_free(struct kern_ipc_msg *msg);
+extern	struct kern_ipc_msg * kern_ipc_msg_allocate(uint32_t msg_size);
+extern	void kern_ipc_msg_free(struct kern_ipc_msg *msg);
 
 #endif	/* __KERN_CORE_MSG_H__ */
