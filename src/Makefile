@@ -1,3 +1,4 @@
+
 BSP_SUBDIR=bsp
 KERN_SUBDIR=kern
 BOARD_SUBDIR=boards
@@ -73,6 +74,7 @@ SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strnlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlcpy.c
+SRCS += $(KERN_SUBDIR)/libraries/string/strncmp.c
 SRCS += $(KERN_SUBDIR)/libraries/list/list.c
 SRCS += $(KERN_SUBDIR)/libraries/mem/bzero.c
 
