@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
  *
@@ -23,6 +24,9 @@
 #include <kern/core/task_defs.h>
 
 struct kern_ipc_port;
+struct kern_ipc_msg;
+
+#define	KERN_IPC_PORT_NAME_LEN		16
 
 /*
  * struct kern_ipc_port - an IPC port between two kernel/user tasks.
@@ -52,6 +56,14 @@ typedef enum {
 struct kern_ipc_port {
 
 	/*
+	 * For named ports... for now.  It's a waste of memory
+	 * having it here for non-named ports, but I want to at
+	 * least bootstrap this stuff.
+	 */
+	char port_name[KERN_IPC_PORT_NAME_LEN];
+	struct list_node name_node;
+
+	/*
 	 * XXX TODO: for now I'm going to cheat and just put ports
 	 * as being owned directly by tasks.  I'd like to add an
 	 * ownership list abstraction, but not today.
@@ -78,14 +90,6 @@ struct kern_ipc_port {
 	struct list_head msg_head;
 
 	/*
-	 * Until I flesh out multi-peer ports with lists so we
-	 * don't just support writing to random destination
-	 * ports/tasks, there's a single peer link each way
-	 * between two ports.
-	 */
-	struct kern_ipc_port *peer;
-
-	/*
 	 * When sending messages we will push them
 	 * directly on the recv queue on the destination peer,
 	 * or return an error if the destination peer queue
@@ -110,14 +114,20 @@ struct kern_ipc_port {
 };
 
 extern	void kern_ipc_port_init(void);
+
+extern	bool kern_ipc_port_add_name(struct kern_ipc_port *port, const char *name);
+extern	struct kern_ipc_port * kern_ipc_port_lookup_name(const char *name);
+extern	bool kern_ipc_port_delete_name(const char *name);
+
 extern	bool kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task);
+extern	struct kern_ipc_port * kern_ipc_port_create(kern_task_id_t task);
+extern	void kern_ipc_port_destroy(struct kern_ipc_port *);
+
 extern	bool kern_ipc_port_set_active(struct kern_ipc_port *port);
 extern	void kern_ipc_port_shutdown(struct kern_ipc_port *port);
 extern	bool kern_ipc_port_close(struct kern_ipc_port *port);
-extern	bool kern_ipc_port_link(struct kern_ipc_port *port_lcl,
-    struct kern_ipc_port *port_rem);
 extern	bool kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
-    struct kern_ipc_msg *msg);
+    struct kern_ipc_port *rem_port, struct kern_ipc_msg *msg);
 extern	struct kern_ipc_msg * kern_port_fetch_receive_msg(struct kern_ipc_port *port);
 extern	struct kern_ipc_msg * kern_port_fetch_completed_msg(struct kern_ipc_port *port);
 extern	bool kern_port_set_msg_completed(struct kern_ipc_msg *msg);
