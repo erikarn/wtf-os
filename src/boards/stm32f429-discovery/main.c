@@ -63,6 +63,8 @@ extern uint32_t _flash_resource_start;
 
 extern void setup_test_userland_task(void);
 extern void test_userload(void);
+extern void setup_kern_test_ipc_task_1(void);
+extern void setup_kern_test_ipc_task_2(void);
 
 /* XXX */
 extern void arm_m4_task_switch();
@@ -340,6 +342,10 @@ main(void)
 
     /* Ok, let's try loading TEST.BIN */
     test_userload();
+
+    /* And our test kernel IPC task - the service endpoint */
+    setup_kern_test_ipc_task_1();
+    setup_kern_test_ipc_task_2();
 
     /* Ready to start context switching */
     kern_task_ready();
