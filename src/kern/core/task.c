@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
  *
@@ -114,6 +113,14 @@ kern_task_timer_set(struct kern_task *task, uint32_t msec)
 	return (ret);
 }
 
+/**
+ * Initialise the given task structure.
+ *
+ * This just sets the generic and the platform side of things up
+ * but doesn't add it to the runlist or start the task.
+ *
+ * XXX TODO: unify kern_task_init and kern_task_user_start!
+ */
 void
 kern_task_generic_init(struct kern_task *task, const char *name)
 {
