@@ -30,7 +30,8 @@
 
 #include <kern/core/exception.h>
 #include <kern/core/physmem.h>
-#include <kern/console/console.h>
+
+#include <kern/core/logging.h>
 
 /**
  * A static set of physical memory regions to use during early system
@@ -118,7 +119,8 @@ kern_physmem_add_to_free_list_locked(paddr_t start, paddr_t size)
 {
 	struct kern_physmem_free_entry *e;
 
-	console_printf("[physmem] [freelist] adding 0x%x -> 0x%x (%d bytes)\n",
+	kern_log(KERN_LOG_LEVEL_DEBUG,
+	    "physmem", "[freelist] adding 0x%x -> 0x%x (%d bytes)",
 	    (uint32_t) start, (uint32_t) (start + size), size);
 
 	e = kern_physmem_init_memory_region_node(start, size);
@@ -147,13 +149,15 @@ kern_physmem_add_range(paddr_t start, paddr_t end, uint32_t flags)
 	 * because I don't have a 64 bit printing type to use.
 	 */
 	size = end - start;
-	console_printf("[physmem] adding 0x%x -> 0x%x (%d bytes),"
-	    " flags 0x%08x\n",
+	kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+	    "adding 0x%x -> 0x%x (%d bytes),"
+	    " flags 0x%08x",
 	    (uint32_t) start, (uint32_t) end, size, flags);
 
 	if (num_kern_physmem_range_bootstrap_entries >=
 	    KERN_PHYSMEM_NUM_BOOTSTRAP_REGIONS) {
-		console_printf("[physmem] too many early regions\n");
+		kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+		    "too many early regions");
 		return;
 	}
 	kern_physmem_range_bootstrap[num_kern_physmem_range_bootstrap_entries].start = start;
@@ -207,7 +211,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 	struct list_node *n;
 	paddr_t retaddr = 0;
 
-	console_printf("[physmem] [malloc] called, size=%d alignment=%d flags=0x%08x\n",
+	kern_log(KERN_LOG_LEVEL_INFO, "physmem",
+	    "[alloc] called, size=%d alignment=%d flags=0x%08x",
 	    (int) size, alignment, flags);
 
 	/*
@@ -231,7 +236,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 
 #if 1
 		if (! kern_physmem_magic_verify(e)) {
-			console_printf("%s: magic failed\n", __func__);
+			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			    "[alloc] magic failed\n");
 		}
 #endif
 
@@ -261,7 +267,9 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 		alloc_start = (uintptr_t)(e + 1);
 		alloc_size = size + sizeof(*e);
 
-		console_printf("[physmem] e=0x%x, alloc_start=0x%08x, size=%d\n", e, alloc_start, alloc_size);
+		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		    "e=0x%x, alloc_start=0x%08x, size=%d",
+		    e, alloc_start, alloc_size);
 
 		/* Figure out alignment, bump start as needed */
 		if (alignment != 0) {
@@ -271,7 +279,9 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			alloc_size += m;
 		}
 
-		console_printf("[physmem] post alignment: alloc_start=0x%08x, size=%d\n", alloc_start, alloc_size);
+		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		    "post alignment: alloc_start=0x%08x, size=%d",
+		    alloc_start, alloc_size);
 
 		/*
 		 * See if the allocation fits within the range
@@ -323,7 +333,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			e_size = alloc_size;
 		}
 
-		console_printf("[physmem] [malloc] allocating 0x%x, %d bytes\n",
+		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		    "[malloc] allocating 0x%x, %d bytes",
 		    (uint32_t) e_start, e_size);
 
 		/*
@@ -340,7 +351,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			 * XXX TODO: we don't have a bzero() in our library
 			 * yet
 			 */
-			console_printf("[physmem] TODO: ZERO\n");
+			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			    "TODO: ZERO");
 			//kern_bzero((void *) e_start, e_size);
 		}
 
@@ -357,7 +369,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 
 	platform_spinlock_unlock(&kern_physmem_spinlock);
 
-	console_printf("[physmem] return 0x%08x\n", retaddr);
+	kern_log(KERN_LOG_LEVEL_INFO, "physmem", "[alloc] return 0x%08x",
+	    retaddr);
 
 	return retaddr;
 }
@@ -381,10 +394,12 @@ kern_physmem_free(paddr_t addr)
 	e = e - 1;
 
 	if (! kern_physmem_magic_verify(e)) {
-		console_printf("%s: magic failed\n", __func__);
+		kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+		    "[free] magic failed");
 	}
 
-	console_printf("[physmem] [free] addr 0x%x, block=0x%x, %d bytes\n",
+	kern_log(KERN_LOG_LEVEL_INFO, "physmem",
+	    "[free] addr 0x%x, block=0x%x, %d bytes",
 	    addr, e->start, e->size);
 
 	/*
@@ -397,7 +412,8 @@ kern_physmem_free(paddr_t addr)
 		ee = container_of(n, struct kern_physmem_free_entry, node);
 
 		if (! kern_physmem_magic_verify(ee)) {
-			console_printf("%s: magic failed\n", __func__);
+			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			    "magic failed");
 		}
 
 		if (ee->start > e->start)
