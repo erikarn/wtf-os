@@ -61,8 +61,10 @@ kern_test_ipc_task_2(void *arg)
 		if (rem_port == NULL) {
 			rem_port = kern_ipc_port_lookup_name("task_1_port");
 			if (rem_port == NULL) {
-				console_printf("%s: couldn't find task_1_port yet!\n");
+				console_printf("%s: couldn't find task_1_port yet!\n",
+				    __func__);
 			}
+			goto next;
 		}
 
 		/*
@@ -72,7 +74,8 @@ kern_test_ipc_task_2(void *arg)
 		if (rem_port != NULL) {
 			msg = kern_ipc_msg_allocate(32);
 			if (kern_port_enqueue_msg(port, rem_port, msg) == false) {
-				console_printf("%s: couldn't enqueue msg!\n");
+				console_printf("%s: couldn't enqueue msg!\n",
+				    __func__);
 				goto next;
 			}
 		}
