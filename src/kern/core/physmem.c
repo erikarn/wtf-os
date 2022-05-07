@@ -33,6 +33,8 @@
 
 #include <kern/core/logging.h>
 
+LOGGING_DEFINE(LOG_PHYSMEM, "physmem", KERN_LOG_LEVEL_NOTICE);
+
 /**
  * A static set of physical memory regions to use during early system
  * bootstrapping.
@@ -119,8 +121,8 @@ kern_physmem_add_to_free_list_locked(paddr_t start, paddr_t size)
 {
 	struct kern_physmem_free_entry *e;
 
-	kern_log(KERN_LOG_LEVEL_DEBUG,
-	    "physmem", "[freelist] adding 0x%x -> 0x%x (%d bytes)",
+	KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_DEBUG,
+	    "[freelist] adding 0x%x -> 0x%x (%d bytes)",
 	    (uint32_t) start, (uint32_t) (start + size), size);
 
 	e = kern_physmem_init_memory_region_node(start, size);
@@ -149,14 +151,14 @@ kern_physmem_add_range(paddr_t start, paddr_t end, uint32_t flags)
 	 * because I don't have a 64 bit printing type to use.
 	 */
 	size = end - start;
-	kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+	KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_DEBUG,
 	    "adding 0x%x -> 0x%x (%d bytes),"
 	    " flags 0x%08x",
 	    (uint32_t) start, (uint32_t) end, size, flags);
 
 	if (num_kern_physmem_range_bootstrap_entries >=
 	    KERN_PHYSMEM_NUM_BOOTSTRAP_REGIONS) {
-		kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+		KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
 		    "too many early regions");
 		return;
 	}
@@ -211,7 +213,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 	struct list_node *n;
 	paddr_t retaddr = 0;
 
-	kern_log(KERN_LOG_LEVEL_INFO, "physmem",
+	KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_INFO,
 	    "[alloc] called, size=%d alignment=%d flags=0x%08x",
 	    (int) size, alignment, flags);
 
@@ -236,7 +238,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 
 #if 1
 		if (! kern_physmem_magic_verify(e)) {
-			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
 			    "[alloc] magic failed\n");
 		}
 #endif
@@ -267,7 +269,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 		alloc_start = (uintptr_t)(e + 1);
 		alloc_size = size + sizeof(*e);
 
-		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_DEBUG,
 		    "e=0x%x, alloc_start=0x%08x, size=%d",
 		    e, alloc_start, alloc_size);
 
@@ -279,7 +281,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			alloc_size += m;
 		}
 
-		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_DEBUG,
 		    "post alignment: alloc_start=0x%08x, size=%d",
 		    alloc_start, alloc_size);
 
@@ -333,7 +335,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			e_size = alloc_size;
 		}
 
-		kern_log(KERN_LOG_LEVEL_DEBUG, "physmem",
+		KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_DEBUG,
 		    "[malloc] allocating 0x%x, %d bytes",
 		    (uint32_t) e_start, e_size);
 
@@ -351,7 +353,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 			 * XXX TODO: we don't have a bzero() in our library
 			 * yet
 			 */
-			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
 			    "TODO: ZERO");
 			//kern_bzero((void *) e_start, e_size);
 		}
@@ -369,7 +371,8 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 
 	platform_spinlock_unlock(&kern_physmem_spinlock);
 
-	kern_log(KERN_LOG_LEVEL_INFO, "physmem", "[alloc] return 0x%08x",
+	KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_INFO,
+	    "[alloc] return 0x%08x",
 	    retaddr);
 
 	return retaddr;
@@ -394,11 +397,11 @@ kern_physmem_free(paddr_t addr)
 	e = e - 1;
 
 	if (! kern_physmem_magic_verify(e)) {
-		kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+		KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
 		    "[free] magic failed");
 	}
 
-	kern_log(KERN_LOG_LEVEL_INFO, "physmem",
+	KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_INFO,
 	    "[free] addr 0x%x, block=0x%x, %d bytes",
 	    addr, e->start, e->size);
 
@@ -412,7 +415,7 @@ kern_physmem_free(paddr_t addr)
 		ee = container_of(n, struct kern_physmem_free_entry, node);
 
 		if (! kern_physmem_magic_verify(ee)) {
-			kern_log(KERN_LOG_LEVEL_CRIT, "physmem",
+			KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
 			    "magic failed");
 		}
 
