@@ -22,9 +22,31 @@
 typedef enum {
 	KERN_LOG_LEVEL_NONE,
 	KERN_LOG_LEVEL_CRIT,
+	KERN_LOG_LEVEL_NOTICE,
 	KERN_LOG_LEVEL_INFO,
 	KERN_LOG_LEVEL_DEBUG
 } kern_log_level_t;
+
+struct kern_log_section {
+	int level;
+	char *name;
+};
+
+#define	LOGGING_DEFINE(label, def_name, def_level) \
+	struct kern_log_section kern_log_section_##label = { \
+		.level = def_level, \
+		.name = def_name, \
+	};
+
+#define	LOGGING_EXT(label) \
+	extern struct kern_log_section kern_log_section_##label;
+
+#define	LOGGING_STRUCT(label) \
+	kern_log_section_ ## label
+
+#define KERN_LOG(l_label, l_level, fmt, ...) \
+	if (LOGGING_STRUCT(l_label).level >= l_level) \
+		kern_log(l_level, LOGGING_STRUCT(l_label).name, fmt, ##__VA_ARGS__)
 
 extern	void kern_log(kern_log_level_t level, const char *label,
 	    const char *fmt, ...);
