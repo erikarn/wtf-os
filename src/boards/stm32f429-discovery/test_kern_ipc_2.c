@@ -74,7 +74,7 @@ kern_test_ipc_task_2(void *arg)
 		 */
 		if (rem_port != NULL) {
 			msg = kern_ipc_msg_allocate(32);
-			if (kern_port_enqueue_msg(port, rem_port, msg) == false) {
+			if (kern_port_enqueue_msg(port, rem_port, msg) != KERN_ERR_OK) {
 				console_printf("%s: couldn't enqueue msg!\n",
 				    __func__);
 				goto next;
