@@ -1,6 +1,7 @@
 #include <stddef.h>
 #include <stdarg.h>
 
+#include <core/platform.h>
 #include <kern/core/exception.h>
 #include <kern/console/console.h>
 
@@ -10,9 +11,8 @@
 void
 exception_spin(void)
 {
-	/* XXX TODO: eventually call into the platform idle routine */
 	while (1)
-		;
+		platform_cpu_idle();
 }
 
 /**
