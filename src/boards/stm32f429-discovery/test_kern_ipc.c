@@ -49,7 +49,7 @@ kern_test_ipc_task_1(void *arg)
 	}
 
 	kern_ipc_port_set_active(port);
-	if (! kern_ipc_port_add_name(port, "task_1_port")) {
+	if (kern_ipc_port_add_name(port, "task_1_port") != KERN_ERR_OK) {
 		console_printf("%s: failed to add port name\n", __func__);
 		goto done;
 	}

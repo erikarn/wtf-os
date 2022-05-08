@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
  *
@@ -80,6 +79,9 @@ struct kern_ipc_port {
 	/* Port state */
 	kern_ipc_port_state_t state;
 
+	/* Refcount */
+	uint8_t refcount;
+
 	/*
 	 * List of messages that we own, that we've either
 	 * queued or completed.
@@ -115,11 +117,12 @@ struct kern_ipc_port {
 
 extern	void kern_ipc_port_init(void);
 
-extern	bool kern_ipc_port_add_name(struct kern_ipc_port *port, const char *name);
+extern	kern_error_t kern_ipc_port_add_name(struct kern_ipc_port *port, const char *name);
 extern	struct kern_ipc_port * kern_ipc_port_lookup_name(const char *name);
 extern	bool kern_ipc_port_delete_name(const char *name);
+extern	kern_error_t kern_ipc_port_get_reference(struct kern_ipc_port *port);
+extern	void kern_ipc_port_free_reference(struct kern_ipc_port *port);
 
-extern	kern_error_t kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task);
 extern	struct kern_ipc_port * kern_ipc_port_create(kern_task_id_t task);
 extern	void kern_ipc_port_destroy(struct kern_ipc_port *);
 

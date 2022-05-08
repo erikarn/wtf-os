@@ -52,25 +52,85 @@ kern_ipc_port_init(void)
 	list_head_init(&kern_port_name_list);
 }
 
+static kern_error_t
+kern_ipc_port_get_reference_locked(struct kern_ipc_port *port)
+{
+	kern_error_t retval;
+
+	if (port->refcount == 255) {
+		retval = KERN_ERR_NOSPC;
+	} else {
+		port->refcount++;
+		retval = KERN_ERR_OK;
+	}
+	return (retval);
+}
+
+/**
+ * Called by the port reference owner, whether it's task local or not.
+ */
+void
+kern_ipc_port_free_reference_locked(struct kern_ipc_port *port)
+{
+	/*
+	 * XXX TODO: not sure how to communicate to the port
+	 * owner that the port reference has changed / is now able
+	 * to complete shutdown/close/free.
+	 */
+	port->refcount--;
+}
+
+kern_error_t
+kern_ipc_port_get_reference(struct kern_ipc_port *port)
+{
+	kern_error_t retval;
+
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+	retval = kern_ipc_port_get_reference_locked(port);
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+	return (retval);
+}
+
+/**
+ * Called by the port reference owner, whether it's task local or not.
+ */
+void
+kern_ipc_port_free_reference(struct kern_ipc_port *port)
+{
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+	kern_ipc_port_free_reference_locked(port);
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+}
+
+
 /**
  * Add the given port to the global namespace.
  *
- * This just adds it.  I'm not keeping references right now.
+ * Called by the port owner.
+ *
+ * This adds it, and will increment the refcount on the port.
  *
  * @param[in] port port to add
  * @param[in] name name to add
- * @retval true if added, false if not (eg duplicate, already added)
+ * @retval KERN_ERR_OK if OK, error if error
  */
-bool
+kern_error_t
 kern_ipc_port_add_name(struct kern_ipc_port *port, const char *name)
 {
+	kern_error_t retval = KERN_ERR_OK;
+
 	kern_strlcpy(port->port_name, name, KERN_IPC_PORT_NAME_LEN);
 
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
+	retval = kern_ipc_port_get_reference_locked(port);
+	if (retval != KERN_ERR_OK) {
+		goto error;
+	}
 	list_add_tail(&kern_port_name_list, &port->name_node);
-	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
-	return (true);
+error:
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+	return (retval);
 }
 
 static struct kern_ipc_port *
@@ -93,12 +153,7 @@ kern_ipc_port_lookup_name_locked(const char *name)
 /**
  * External function to lookup a port by name.
  *
- * This again doesn't do any refcounting; my hope is to get the
- * kernel IPC here to be non-blocking, so if a task or port is closed
- * with in flight messages, they can just be deleted or something.
- *
- * I dunno if that's going to work out in the long run but I really,
- * really would like to get IPC messages flowing already, sheesh!
+ * This returns the port if found, with the refcount incremented.
  *
  * @param[in] name name to lookup
  * @retval port if found, false otherwise
@@ -110,6 +165,22 @@ kern_ipc_port_lookup_name(const char *name)
 
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port = kern_ipc_port_lookup_name_locked(name);
+	if (port == NULL) {
+		goto done;
+	}
+
+	/* Don't return ports if they're not in running state */
+	if (port->state != KERN_IPC_PORT_STATE_RUNNING) {
+		port = NULL;
+		goto done;
+	}
+
+	/* get reference; fail if too many */
+	if (kern_ipc_port_get_reference_locked(port) != KERN_ERR_OK) {
+		port = NULL;
+		goto done;
+	}
+done:
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	return (port);
 }
@@ -130,6 +201,7 @@ kern_ipc_port_delete_name(const char *name)
 	if (port != NULL) {
 		list_delete(&kern_port_name_list, &port->name_node);
 		port->port_name[0] = '\0';
+		kern_ipc_port_free_reference_locked(port);
 	}
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
@@ -142,7 +214,7 @@ kern_ipc_port_delete_name(const char *name)
  * It will be initialised with the given parameters, but not
  * connected to any remote port.
  */
-kern_error_t
+static kern_error_t
 kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 {
 	list_node_init(&port->owner_node);
@@ -162,6 +234,9 @@ kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 	port->compl_msg.max = 8;
 
 	port->owner_task = task;
+
+	/* Owner owns this! */
+	port->refcount = 1;
 
 	return (KERN_ERR_OK);
 }
@@ -213,7 +288,8 @@ kern_ipc_port_set_active(struct kern_ipc_port *port)
 void
 kern_ipc_port_shutdown(struct kern_ipc_port *port)
 {
-	console_printf("%s: TODO\n");
+	console_printf("%s: TODO\n", __func__);
+
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_SHUTDOWN;
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
@@ -222,6 +298,8 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 /**
  * Close the given port.
  *
+ * Only call from the port owner task.
+ *
  * This marks the port as shutting down if it isn't, purges
  * any pending IPCs in the queue, and then finishes wrapping
  * up state for this port.
@@ -229,13 +307,60 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 bool
 kern_ipc_port_close(struct kern_ipc_port *port)
 {
-	console_printf("%s: TODO\n");
+	console_printf("%s: TODO\n", __func__);
+
 	/*
-	 * XXX TODO: First up, if we're not running, then we should go
-	 * through the shutdown state?
+	 * Skip shutdown; go straight to closed.
 	 */
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_CLOSED;
+
+	/*
+	 * XXX TODO: walk the list of RX'ed frames that
+	 * we haven't yet handled and queue them for
+	 * completion w/ a canceled/closed status.
+	 * Yeah I'm going to have to add that to the IPC
+	 * message.  That way the receiver knows to
+	 * immediately toss them.
+	 */
+
+	/*
+	 * XXX TODO: Next up is frames in our completed
+	 * queue.
+	 */
+
+	/*
+	 * XXX TODO: Frames that we own that are on the
+	 * queues of other ports?  Maybe we can cancel them.
+	 * Maybe they're dequeued already and are owned
+	 * by the receiving task for now.  In any case,
+	 * we'll cancel the ones we can cancel and the
+	 * others we'll need to wait until they're completed
+	 * and on our completion queue before we cancel those.
+	 */
+
+	/*
+	 * We also can't close if there are outstanding refcounts,
+	 * so we need to stick around until that's done.
+	 */
+
+	/*
+	 * XXX TODO; Yes, this means I need to modify this
+	 * routine to be callable multiple times and return
+	 * whether the close has finished or not.  That way
+	 * the owner (ie, some wrapper function?) can either
+	 * block waiting for things to finish, or can return
+	 * and let the task continue doing other stuff; it
+	 * can then check in later on to free things.
+	 *
+	 * Finally yeah, this means during actual task shutdown
+	 * we'll end up looping over ports to wait until
+	 * they're done before we actually /exit/ the task.
+	 * Maybe that's nice, maybe we can put ports that
+	 * just have refcounts outstanding on some dead list
+	 * and free them in the idle thread if needs be,
+	 * so the task can be cleaned up later.
+	 */
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	return (false);
