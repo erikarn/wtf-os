@@ -128,6 +128,7 @@ kern_task_generic_init(struct kern_task *task, const char *name)
 
 	list_node_init(&task->task_list_node);
 	list_node_init(&task->task_active_node);
+	list_head_init(&task->task_port_list);
 
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
