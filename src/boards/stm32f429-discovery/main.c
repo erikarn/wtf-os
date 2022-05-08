@@ -45,6 +45,7 @@
 /* resource paks */
 #include "kern/flash/flash_resource_header.h"
 #include "kern/flash/flash_resource_pak.h"
+#include "kern/core/error.h"
 #include "kern/ipc/port.h"
 
 #include "core/platform.h"

@@ -36,6 +36,7 @@
 #include <kern/core/task.h>
 #include <kern/core/signal.h>
 #include <kern/core/physmem.h>
+#include <kern/core/error.h>
 
 #include <kern/ipc/port.h>
 #include <kern/ipc/msg.h>
@@ -141,7 +142,7 @@ kern_ipc_port_delete_name(const char *name)
  * It will be initialised with the given parameters, but not
  * connected to any remote port.
  */
-bool
+kern_error_t
 kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 {
 	list_node_init(&port->owner_node);
@@ -162,20 +163,25 @@ kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 
 	port->owner_task = task;
 
-	return (true);
+	return (KERN_ERR_OK);
 }
 
 struct kern_ipc_port *
 kern_ipc_port_create(kern_task_id_t task)
 {
 	struct kern_ipc_port *port;
+	kern_error_t err;
 
 	port = (void *) kern_physmem_alloc(sizeof(*port), 4,
 	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (port == NULL) {
 		return (NULL);
 	}
-	kern_ipc_port_setup(port, task);
+	err = kern_ipc_port_setup(port, task);
+	if (err != KERN_ERR_OK) {
+		kern_physmem_free((paddr_t) port);
+		return (NULL);
+	}
 	return (port);
 }
 
@@ -211,11 +217,6 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_SHUTDOWN;
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
-
-	/*
-	 * XXX TODO: need to inform the remote peer, if one exists,
-	 * that we've shutdown.
-	 */
 }
 
 /**
@@ -233,14 +234,10 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 	 * XXX TODO: First up, if we're not running, then we should go
 	 * through the shutdown state?
 	 */
-
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_CLOSED;
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
-	/*
-	 * XXX TODO: need to inform the remote peer, if one exists,
-	 * that we've closed, disconnecting from the peer.
-	 */
+
 	return (false);
 }
 
@@ -273,16 +270,36 @@ kern_ipc_port_close(struct kern_ipc_port *port)
  * notifications when the remote port is ready to
  * receive data again.
  */
-bool
+kern_error_t
 kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
     struct kern_ipc_port *rem_port,
     struct kern_ipc_msg *msg)
 {
+	kern_error_t retval = KERN_ERR_OK;
 
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 
+	/*
+	 * Check local port state, if we're not active then
+	 * we can't queue a message.
+	 */
+	if (lcl_port->state != KERN_IPC_PORT_STATE_RUNNING) {
+		retval = KERN_ERR_SHUTDOWN;
+		goto error;
+	}
+
+	/*
+	 * Check remote port state, if we're not active then
+	 * we can't queue a message.
+	 */
+	if (rem_port->state != KERN_IPC_PORT_STATE_RUNNING) {
+		retval = KERN_ERR_SHUTDOWN;
+		goto error;
+	}
+
 	/* Check if there's space at the receiver */
 	if (rem_port->recv_msg.num >= rem_port->recv_msg.max) {
+		retval = KERN_ERR_NOSPC;
 		goto error;
 	}
 
@@ -296,24 +313,16 @@ kern_port_enqueue_msg(struct kern_ipc_port *lcl_port,
 	rem_port->recv_msg.num++;
 	msg->state = KERN_IPC_MSG_STATE_QUEUED;
 
-	/* Notify receiver port */
-	/*
-	 * XXX TODO: I don't like it being done inside
-	 * the kern IPC spinlock; ideally we'd have a way
-	 * to ensure that the local/rem port isn't going
-	 * to go away whilst we do operations (eg refcounting)
-	 * but we don't have that right now.
-	 */
-	kern_task_signal(rem_port->owner_task,
-	    KERN_SIGNAL_TASK_WAIT_PORT_RXREADY);
-
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
-	return (true);
+	/* Notify receiver port */
+	kern_task_signal(rem_port->owner_task,
+	    KERN_SIGNAL_TASK_WAIT_PORT_RXREADY);
+	return (KERN_ERR_OK);
 
 error:
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
-	return (false);
+	return (retval);
 }
 
 /**
@@ -408,7 +417,6 @@ kern_port_set_msg_completed(struct kern_ipc_msg *msg)
 	port->compl_msg.num++;
 	msg->state = KERN_IPC_MSG_STATE_COMPLETED;
 
-	/* XXX TODO: wakeup receiver port w/ completion notification */
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	/* Notify receiver port */

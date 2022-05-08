@@ -24,6 +24,7 @@
 #include "hw/types.h"
 
 #include "kern/console/console.h"
+#include "kern/core/error.h"
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"

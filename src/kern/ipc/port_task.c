@@ -31,6 +31,7 @@
 #include <kern/console/console.h>
 
 #include <kern/core/exception.h>
+#include <kern/core/error.h>
 #include <kern/core/task_defs.h>
 #include <kern/core/task.h>
 #include <kern/core/signal.h>
