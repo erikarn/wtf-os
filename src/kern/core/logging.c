@@ -23,6 +23,7 @@
 
 #include <hw/types.h>
 
+#include <kern/libraries/screen/ansi.h>
 #include <kern/libraries/string/string.h>
 #include <kern/libraries/list/list.h>
 #include <kern/libraries/container/container.h>
@@ -37,17 +38,17 @@ kern_log(kern_log_level_t level, const char *label, const char *fmt, ...)
 
 	switch (level) {
 	case KERN_LOG_LEVEL_CRIT:
-		console_printf("%s", "\e[1;31m");
+		console_printf("%s", ANSI_BRED);
 		break;
 	case KERN_LOG_LEVEL_INFO:
-		console_printf("%s", "\e[1;33m");
+		console_printf("%s", ANSI_BYEL);
 		break;
 	case KERN_LOG_LEVEL_DEBUG:
-		console_printf("%s", "\e[1;36m");
+		console_printf("%s", ANSI_BCYN);
 		break;
 	case KERN_LOG_LEVEL_NONE:
 	default:
-		console_printf("%s", "\e[0;37m");
+		console_printf("%s", ANSI_BWHT);
 		break;
 	}
 
@@ -57,5 +58,5 @@ kern_log(kern_log_level_t level, const char *label, const char *fmt, ...)
 	console_vprintf(fmt, ap);
 	va_end(ap);
 
-	console_printf("%s\n", "\e[0m");
+	console_printf("%s\n", ANSI_CRESET);
 }
