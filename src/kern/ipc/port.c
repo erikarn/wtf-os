@@ -211,12 +211,24 @@ kern_ipc_port_delete_name(const char *name)
 /**
  * Initialise the given port.
  *
- * It will be initialised with the given parameters, but not
- * connected to any remote port.
+ * It will be initialised with the given parameters and connected
+ * to the given task.
+ *
+ * XXX TODO: this needs to use the task lock somehow!
+ * Maybe this shouldn't be what users use, and instead a routine
+ * in task.c creates a port specifically /for/ the task, and can
+ * thus add it to the task list.
  */
 static kern_error_t
 kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 {
+	struct kern_task *t;
+
+	t = kern_task_lookup(task);
+	if (t == NULL) {
+		return (KERN_ERR_INVALID_TASKID);
+	}
+
 	list_node_init(&port->owner_node);
 	list_node_init(&port->recv_notif_node);
 	list_node_init(&port->compl_notif_node);
@@ -227,13 +239,18 @@ kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 
 	list_head_init(&port->recv_msg.list);
 	port->recv_msg.num = 0;
-	port->recv_msg.max = 8;
+	port->recv_msg.max = 8; /* XXX hard-coded for now */
 
 	list_head_init(&port->compl_msg.list);
 	port->compl_msg.num = 0;
-	port->compl_msg.max = 8;
+	port->compl_msg.max = 8; /* XXX hard-coded for now */
 
 	port->owner_task = task;
+
+	/* XXX owner list stuff shouldn't be in here */
+	/* XXX TODO: Need to be using the task lock! Ew! */
+	list_add_tail(&t->task_port_list, &port->owner_node);
+	kern_task_refcount_dec(t); t = NULL;
 
 	/* Owner owns this! */
 	port->refcount = 1;
