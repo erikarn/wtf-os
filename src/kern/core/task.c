@@ -117,6 +117,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
 
 	list_node_init(&task->task_list_node);
+	list_node_init(&task->task_active_node);
 
 	/*
 	 * For now we start with the entry point and kernel stack
@@ -178,6 +179,7 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
 
 	list_node_init(&task->task_list_node);
+	list_node_init(&task->task_active_node);
 
 	/*
 	 * For now we start with the entry point and kernel stack
