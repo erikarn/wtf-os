@@ -31,7 +31,7 @@
 #include <kern/core/signal.h>
 #include <kern/core/task.h>
 #include <kern/core/timer.h>
-#include <kern/core/physmem.h>
+#include <kern/core/malloc.h>
 #include <kern/console/console.h>
 
 #include <core/platform.h>
@@ -438,7 +438,7 @@ kern_test_task_fn(void)
 	kern_task_signal_set_t sig;
 	int count = 0;
 	bool ret;
-	paddr_t alloc = 0;
+	void *alloc = NULL;
 
 	console_printf("[test] started!\n");
 
@@ -464,10 +464,10 @@ kern_test_task_fn(void)
 		}
 #endif
 		count++;
-		if (alloc != 0) {
-			kern_physmem_free(alloc);
+		if (alloc != NULL) {
+			kern_free(alloc);
 		}
-		alloc = kern_physmem_alloc(1024, 8, 0);
+		alloc = kern_malloc_nonzero(1024, 8);
 	}
 
 	console_printf("[test] Finishing!\n");
