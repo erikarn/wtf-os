@@ -27,6 +27,7 @@
 
 #include <kern/libraries/container/container.h>
 #include <kern/libraries/list/list.h>
+#include <kern/libraries/mem/mem.h>
 
 #include <kern/core/exception.h>
 #include <kern/core/physmem.h>
@@ -349,13 +350,7 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 		 */
 
 		if (flags & KERN_PHYSMEM_ALLOC_FLAG_ZERO) {
-			/*
-			 * XXX TODO: we don't have a bzero() in our library
-			 * yet
-			 */
-			KERN_LOG(LOG_PHYSMEM, KERN_LOG_LEVEL_CRIT,
-			    "TODO: ZERO");
-			//kern_bzero((void *) e_start, e_size);
+			kern_bzero((void *) e_start, e_size);
 		}
 
 		e = (void *) (((char *)alloc_start) - sizeof(*e));
