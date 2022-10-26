@@ -236,6 +236,14 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
+void
+kern_task_start(struct kern_task *task)
+{
+	platform_spinlock_lock(&kern_task_spinlock);
+	_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
+	platform_spinlock_unlock(&kern_task_spinlock);
+}
+
 /*
  * Select a task to run.
  *
@@ -582,9 +590,8 @@ kern_task_setup(void)
 	/* Test task will be made ready to run as well */
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
-	platform_spinlock_lock(&kern_task_spinlock);
-	_kern_task_set_state_locked(&test_task, KERN_TASK_STATE_READY);
-	platform_spinlock_unlock(&kern_task_spinlock);
+
+	kern_task_start(&test_task);
 }
 
 static struct kern_task *
@@ -613,6 +620,12 @@ kern_task_to_id(struct kern_task *task)
 {
 
 	return (kern_task_id_t) (uintptr_t) task;
+}
+
+kern_task_id_t
+kern_task_current_id(void)
+{
+	return (kern_task_to_id(current_task));
 }
 
 void

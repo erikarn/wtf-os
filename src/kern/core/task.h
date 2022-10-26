@@ -137,6 +137,7 @@ extern	void kern_task_user_start(struct kern_task *task, void *entry_point,
 
 
 extern	void kern_task_setup(void);
+extern	void kern_task_start(struct kern_task *task);
 
 /**
  * Select a new task to run.  This is called from the platform specific
@@ -153,6 +154,11 @@ extern	struct kern_task * kern_task_lookup(kern_task_id_t task_id);
  * Turn a task struct into a task id.
  */
 extern	kern_task_id_t kern_task_to_id(struct kern_task *task);
+
+/**
+ * Get the ID of the current task.
+ */
+extern	kern_task_id_t kern_task_current_id(void);
 
 /**
  * Task reference increment/decrement.
