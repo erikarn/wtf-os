@@ -23,23 +23,7 @@
 #include <kern/core/signal.h>
 #include <kern/core/timer.h>
 
-typedef enum {
-	KERN_TASK_STATE_NONE = 0,
-	KERN_TASK_STATE_SLEEPING = 1,
-	KERN_TASK_STATE_READY = 2,
-	KERN_TASK_STATE_RUNNING = 3,
-	KERN_TASK_STATE_DYING = 4,
-	KERN_TASK_STATE_IDLE = 5,
-} kern_task_state_t;
-
-/**
- * In this task implementation, I'm going to super cheat and
- * just have task IDs match their location in memory.
- * However, things can't make that assumption, and so other
- * tasks (kernel and eventually userland) can only store
- * kern_task_id_t's to reference other tasks.
- */
-typedef uintptr_t kern_task_id_t;
+#include <kern/core/task_defs.h>
 
 /*
  * This defines a single task.
