@@ -887,6 +887,18 @@ kern_task_set_task_state_locked(kern_task_id_t task_id,
 	kern_task_refcount_dec(task);
 }
 
+/**
+ * Update the current task signal mask.
+ *
+ * The new signal mask for the current task is
+ *
+ * sig_mask = (sig_mask & and_sig_mask) | or_sig_mask
+ *
+ * This allows bits to be set AND cleared.
+ *
+ * @param[in] and_sig_mask Signal mask to AND over the current sigmask
+ * @param[in] or_sig_mask Signal mask to then OR over the above
+ */
 void
 kern_task_set_sigmask(kern_task_signal_mask_t and_sig_mask,
     kern_task_signal_mask_t or_sig_mask)
