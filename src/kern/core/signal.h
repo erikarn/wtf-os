@@ -43,6 +43,7 @@ typedef uint32_t kern_task_signal_set_t;
  *          task doesn't handle this signal then at some point ("when"
  *          is a great question here!) it will be terminated anyway.
  */
+#define	KERN_SIGNAL_ALL_MASK			0xffffffff
 #define	KERN_SIGNAL_TASK_MASK			0x000000ff
 #define	KERN_SIGNAL_TASK_KSLEEP			BIT_U32(0)
 #define	KERN_SIGNAL_TASK_TERMINATE		BIT_U32(1)
