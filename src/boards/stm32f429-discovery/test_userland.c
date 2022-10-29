@@ -31,8 +31,6 @@
 #include "core/platform.h"
 
 
-static struct kern_task test_user_task;
-
 /*
  * I'm not yet sure how I return a value here; it's quite possible
  * I need to commit some more naked inline assembly sins to get everything
@@ -74,16 +72,29 @@ void
 setup_test_userland_task(void)
 {
 	paddr_t kern_stack, user_stack;
+	struct kern_task *test_user_task;
+
 
 	/* XXX TODO: check for retval=0 */
 	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	user_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 
-	kern_task_user_start(&test_user_task, kern_test_user_task, NULL,
+	/*
+	 * XXX TODO: this is 512 instead of sizeof() because of limits
+	 * of the current physmem allocator.  Fix it to use the kernel malloc
+	 * allocator when I've written that.
+	 */
+	test_user_task = (void *) kern_physmem_alloc(512, 4, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+
+	/* Create a user task with dynamically allocated RAM */
+	kern_task_user_init(test_user_task, kern_test_user_task, NULL,
 	    "user_task",
 	    (stack_addr_t) kern_stack,
 	    512,
 	    (stack_addr_t) user_stack,
-	    512);
-}
+	    512,
+	    false);
 
+	/* And start it */
+	kern_task_start(test_user_task);
+}

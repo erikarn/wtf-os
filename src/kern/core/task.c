@@ -32,6 +32,7 @@
 #include <kern/core/task.h>
 #include <kern/core/timer.h>
 #include <kern/core/malloc.h>
+#include <kern/core/logging.h>
 #include <kern/console/console.h>
 
 #include <core/platform.h>
@@ -47,6 +48,8 @@ static uint32_t active_task_count = 0;
 static uint32_t dying_task_count = 0;
 
 static bool task_switch_ready = false;
+
+LOGGING_DEFINE(LOG_TASK, "task", KERN_LOG_LEVEL_NOTICE);
 
 /*
  * Idle task
@@ -104,14 +107,15 @@ kern_task_timer_set(struct kern_task *task, uint32_t msec)
 }
 
 /**
- * Initialise the given task structure.
+ * Initialise the given task structure for a kernel task.
  *
  * This just sets the generic and the platform side of things up
  * but doesn't add it to the runlist or start the task.
  */
 void
 kern_task_init(struct kern_task *task, void *entry_point,
-    const char *name, stack_addr_t kern_stack, int kern_stack_size)
+    const char *name, stack_addr_t kern_stack, int kern_stack_size,
+    bool is_static)
 {
 
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
@@ -134,9 +138,13 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->is_user_task = 0;
 
 	/*
-	 * XXX TODO: we don't currently support dynamic memory here.
+	 * Mark whether the task memory/stack is static or dynamic.
+	 *
+	 * If it's static then we don't free it when we're cleaning up the
+	 * task.
 	 */
-	task->is_static_task = true;
+	task->is_static_task = is_static;
+
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
 
@@ -170,10 +178,17 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
+/**
+ * Initialise the given task structure for a kernel task.
+ *
+ * This just sets the generic and the platform side of things up
+ * but doesn't add it to the runlist or start the task.
+ */
 void
-kern_task_user_start(struct kern_task *task, void *entry_point,
+kern_task_user_init(struct kern_task *task, void *entry_point,
     void *arg, const char *name, stack_addr_t kern_stack,
-    int kern_stack_size, stack_addr_t user_stack, int user_stack_size)
+    int kern_stack_size, stack_addr_t user_stack, int user_stack_size,
+    bool is_static)
 {
 
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
@@ -194,10 +209,15 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	task->user_stack = user_stack;
 	task->user_stack_size = user_stack_size;
 	task->is_user_task = 1;
+
 	/*
-	 * XXX TODO: we don't currently support dynamic memory here.
+	 * Mark whether the task memory/stack is static or dynamic.
+	 *
+	 * If it's static then we don't free it when we're cleaning up the
+	 * task.
 	 */
-	task->is_static_task = true;
+	task->is_static_task = is_static;
+
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
 
@@ -227,15 +247,19 @@ kern_task_user_start(struct kern_task *task, void *entry_point,
 	task->sig_mask = KERN_SIGNAL_TASK_MASK;
 
 	/*
-	 * Last, add it to the global list of tasks, make it
-	 * ready to run.
+	 * Last, add it to the global list of tasks, but don't yet
+	 * make it ready to run.
 	 */
 	platform_spinlock_lock(&kern_task_spinlock);
 	list_add_tail(&kern_task_list, &task->task_list_node);
-	_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
 	platform_spinlock_unlock(&kern_task_spinlock);
 }
 
+/**
+ * Start the given kernel/user task.
+ *
+ * This makes it ready to be scheduled.
+ */
 void
 kern_task_start(struct kern_task *task)
 {
@@ -339,7 +363,7 @@ skip:
  * Called with the kern_task_spinlock held - but technically
  * since it's no longer on the list it doesn't need to be
  * held with this lock.  Once this all works, it'd be good
- * to mdify the reaping process to grab the whole list under
+ * to modify the reaping process to grab the whole list under
  * the kern_task_spinlock, remove them from the lists and
  * leave them on an on-stack list, and then free them without
  * the lock held.
@@ -349,9 +373,29 @@ skip:
 static void
 kern_task_cleanup(struct kern_task *task)
 {
-	console_printf("[task] cleaning task 0x%08x\n", task);
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x\n", task);
 	if (task->is_static_task == false) {
 		console_printf("[task] TODO: actually FREE it!\n");
+	}
+}
+
+/**
+ * Clean up the now reaped tasks - free all the resources
+ * that we can't clean up under the kernel lock.
+ */
+static void
+kern_cleanup_dying_tasks(struct list_head *task_dead_list)
+{
+	struct list_node *node;
+	struct kern_task *task;
+
+	while (task_dead_list->head != NULL) {
+		node = kern_task_dying_list.head;
+		task = container_of(node, struct kern_task,
+		    task_active_node);
+
+		list_delete(task_dead_list, &task->task_list_node);
+		kern_task_cleanup(task);
 	}
 }
 
@@ -364,7 +408,7 @@ kern_task_cleanup(struct kern_task *task)
  * Called with the kern_task_spinlock held.
  */
 static void
-kern_reap_dying_tasks_locked(void)
+kern_reap_dying_tasks_locked(struct list_head *task_dead_list)
 {
 	struct list_node *node;
 	struct kern_task *task;
@@ -374,20 +418,16 @@ kern_reap_dying_tasks_locked(void)
 		task = container_of(node, struct kern_task,
 		    task_active_node);
 
-		/*
-		 * TODO: yeah, when it's time to do a private list,
-		 * we will likely want to have already deleted it from
-		 * the global and running lists, and have it ONLY on
-		 * the dying list.  Then that list can be moved over
-		 * quickly and then freed without having the lock held.
-		 */
-
 		list_delete(&kern_task_dying_list, &task->task_active_node);
 		list_delete(&kern_task_list, &task->task_list_node);
+
+		/*
+		 * Add it to the private list, then do a second pass
+		 * outside of this function to do the kern_task_cleanup() call.
+		 */
 		dying_task_count--;
 
-		kern_task_cleanup(task);
-
+		list_add_tail(task_dead_list, &task->task_list_node);
 		/* Task is invalid here */
 	}
 }
@@ -395,7 +435,12 @@ kern_reap_dying_tasks_locked(void)
 static void
 kern_idle_task_fn(void)
 {
-	console_printf("[idle] started!\n");
+	struct list_head task_dead_list;
+
+	list_head_init(&task_dead_list);
+
+	//console_printf("[idle] started!\n");
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[idle] started!\n");
 	while (1) {
 //		console_printf("[idle] entering idle!\n");
 
@@ -418,8 +463,13 @@ kern_idle_task_fn(void)
 		 */
 		platform_spinlock_lock(&kern_task_spinlock);
 		if (dying_task_count > 0) {
-			kern_reap_dying_tasks_locked();
+			/* Reap them, ready to clean-up */
+			kern_reap_dying_tasks_locked(&task_dead_list);
 			platform_spinlock_unlock(&kern_task_spinlock);
+
+			/* Clean-up outside of the lock */
+			kern_cleanup_dying_tasks(&task_dead_list);
+
 			platform_kick_context_switch();
 			continue;
 		}
@@ -585,11 +635,13 @@ kern_task_setup(void)
 
 	/* Idle task will be magically made ready to run */
 	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
-	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack));
+	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack),
+	    true);
 
 	/* Test task will be made ready to run as well */
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
-	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack));
+	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack),
+	    true);
 
 	kern_task_start(&test_task);
 }
