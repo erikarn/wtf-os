@@ -49,7 +49,7 @@ static uint32_t dying_task_count = 0;
 
 static bool task_switch_ready = false;
 
-LOGGING_DEFINE(LOG_TASK, "task", KERN_LOG_LEVEL_NOTICE);
+LOGGING_DEFINE(LOG_TASK, "task", KERN_LOG_LEVEL_INFO);
 
 /*
  * Idle task
@@ -71,7 +71,8 @@ kern_task_timer_ev_fn(kern_timer_event_t *ev, void *arg1,
 	kern_task_id_t t;
 
 	t = kern_task_to_id(arg1);
-	console_printf("[kern] timer fired, task 0x%08x\n", t);
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "[kern] timer fired, task 0x%08x", t);
 	kern_task_signal(t, KERN_SIGNAL_TASK_KSLEEP);
 }
 
@@ -375,7 +376,8 @@ kern_task_cleanup(struct kern_task *task)
 {
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x\n", task);
 	if (task->is_static_task == false) {
-		console_printf("[task] TODO: actually FREE it!\n");
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+		    "[task] TODO: actually FREE it!");
 	}
 }
 
@@ -439,8 +441,7 @@ kern_idle_task_fn(void)
 
 	list_head_init(&task_dead_list);
 
-	//console_printf("[idle] started!\n");
-	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[idle] started!\n");
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[idle] started!");
 	while (1) {
 //		console_printf("[idle] entering idle!\n");
 
@@ -498,7 +499,7 @@ kern_test_task_fn(void)
 	bool ret;
 	void *alloc = NULL;
 
-	console_printf("[test] started!\n");
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[test] started!");
 
 	/* Enable all task signals for now */
 	kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
@@ -507,10 +508,11 @@ kern_test_task_fn(void)
 		/* Wait every 5 seconds for now */
 		ret = kern_task_timer_set(current_task, 5000);
 		if (ret == false) {
-			console_printf("[test] falied to add task timer?\n");
+			KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT, "[test] failed to add task timer?!");
 			continue;
 		}
-		console_printf("[test] **** (tick=0x%08x), entering wait!\n",
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO,
+		    "[test] **** (tick=0x%08x), entering wait!",
 		    (uint32_t) kern_timer_tick_msec);
 		(void) kern_task_wait(KERN_SIGNAL_TASK_KSLEEP, &sig);
 		/*
@@ -528,7 +530,7 @@ kern_test_task_fn(void)
 		alloc = kern_malloc_nonzero(1024, 8);
 	}
 
-	console_printf("[test] Finishing!\n");
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_NOTICE, "[test] Finishing!");
 	kern_task_exit();
 }
 
@@ -542,11 +544,10 @@ _kern_task_set_state_locked(struct kern_task *task,
 {
 	bool do_ctx = false;
 
-#if 0
-	console_printf("task %s state %d -> %d, active list=%d\n",
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "task %s state %d -> %d, active list=%d",
 	    task->task_name, task->cur_state, new_state,
 	    task->is_on_active_list);
-#endif
 
 	/* Update state, only do work if the state hasn't changed */
 	if (task->cur_state == new_state)
@@ -610,7 +611,8 @@ _kern_task_set_state_locked(struct kern_task *task,
 		break;
 	case KERN_TASK_STATE_RUNNING:
 	default:
-		console_printf("[task] taskptr 0x%x unhandled state %d\n",
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+		    "[task] taskptr 0x%x unhandled state %d",
 		    task, task->cur_state);
 		break;
 	}
@@ -706,7 +708,8 @@ void
 kern_task_exit(void)
 {
 
-	console_printf("[task] %s: called\n", __func__);
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_NOTICE,
+	    "[task] %s: called", __func__);
 
 	/*
 	 * XXX TODO: we may need to block here until it's
@@ -744,7 +747,7 @@ kern_task_exit(void)
 void
 kern_task_kill(kern_task_id_t task_id)
 {
-	console_printf("[task] %s: TODO\n", __func__);
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT, "[task] %s: TODO!");
 	/* XXX TODO */
 	return;
 }
@@ -770,10 +773,9 @@ kern_task_wait(kern_task_signal_mask_t sig_mask,
 {
 	volatile kern_task_signal_set_t sigs;
 
-#if 0
-	console_printf("[task] wait: task=%x sig_mask=0x%08x\n",
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "[task] wait: task=%x sig_mask=0x%08x",
 	    current_task, sig_mask);
-#endif
 
 	/*
 	 * This is a bit messy and I dislike it, but I'll do this
@@ -841,10 +843,9 @@ _kern_task_state_valid_locked(struct kern_task *task)
 static void
 _kern_task_wakeup_locked(struct kern_task *task)
 {
-#if 0
-	console_printf("task %s waking up, state is %d\n", task->task_name,
-	    task->cur_state);
-#endif
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "task %s waking up, state is %d",
+	    task->task_name, task->cur_state);
 	if (task->cur_state == KERN_TASK_STATE_SLEEPING) {
 		_kern_task_set_state_locked(task, KERN_TASK_STATE_READY);
 	}
@@ -866,9 +867,10 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 {
 	struct kern_task *task;
 
-#if 0
-	console_printf("[task] task=0x%x sigset=0x%08x\n", task_id, sig_set);
-#endif
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "[task] task=0x%x sigset=0x%08x",
+	    task_id, sig_set);
+
 	platform_spinlock_lock(&kern_task_spinlock);
 
 	/*
@@ -879,12 +881,14 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 
 	if (task == NULL) {
 		platform_spinlock_unlock(&kern_task_spinlock);
-		console_printf("[task] invalid task id 0x%x\n", task_id);
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+		    "[task] invalid task id 0x%x", task_id);
 		return (-1);
 	}
 
 	if (! _kern_task_state_valid_locked(task)) {
-		console_printf("[task] signal: invalid state (%d)\n",
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+		    "[task] signal: invalid state (%d)",
 		    task->cur_state);
 		kern_task_refcount_dec(task);
 		platform_spinlock_unlock(&kern_task_spinlock);
@@ -893,15 +897,15 @@ kern_task_signal(kern_task_id_t task_id, kern_task_signal_set_t sig_set)
 
 	task->sig_set |= sig_set;
 
-#if 0
-	console_printf("[task] signal: task id 0x%x sig_set 0x%x task"
-	    " sigset 0x%x, task sigmask 0x%x\n",
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+	    "[task] signal: task id 0x%x sig_set 0x%x task"
+	    " sigset 0x%x, task sigmask 0x%x",
 	    task_id, sig_set, task->sig_set, task->sig_mask);
-#endif
+
 	if ((task->sig_set & task->sig_mask) != 0) {
-#if 0
-		console_printf("[task] signal: task id 0x%x wakeup\n", task_id);
-#endif
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_DEBUG,
+		    "[task] signal: task id 0x%x wakeup",
+		    task_id);
 		/*
 		 * Wake up the task if it's not sleeping.
 		 *
