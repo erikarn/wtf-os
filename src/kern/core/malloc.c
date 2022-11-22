@@ -27,9 +27,11 @@
 /*
  * Yes this is a kernel memory allocator for tasks.
  *
- * It's designed to be used where kernel tasks want their own memory
- * to use, so memory allocated here may eventually be accounted
- * to a kernel task, etc.
+ * It's designed to be used for kernel memory that doesn't specifically
+ * need to be allocated to tasks, specifically memory protected, etc.
+ *
+ * Ideally it'd come out of a kernel specific slab arena, but for
+ * now we'll just wrap the physmem code so I can migrate users.
  */
 
 void *
