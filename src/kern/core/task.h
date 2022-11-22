@@ -110,7 +110,12 @@ struct kern_task {
  */
 extern	struct kern_task * current_task;
 
-/* XXX sigh, naming is hard */
+/**
+ * Create a kernel / user task.
+ *
+ * The kern/user stack must either be statically allocated or allocated
+ * via kern_physmem_alloc() so it can be appropriately freed.
+ */
 extern	void kern_task_init(struct kern_task *task, void *entry_point,
 	    const char *name, stack_addr_t kern_stack, int kern_stack_size,
 	    bool is_static);

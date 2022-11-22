@@ -33,6 +33,7 @@
 #include <kern/core/timer.h>
 #include <kern/core/malloc.h>
 #include <kern/core/logging.h>
+#include <kern/core/physmem.h>
 #include <kern/console/console.h>
 
 #include <core/platform.h>
@@ -124,13 +125,6 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	list_node_init(&task->task_list_node);
 	list_node_init(&task->task_active_node);
 
-	/*
-	 * For now we start with the entry point and kernel stack
-	 * being for the "kernel".  I'll worry about changing this
-	 * to support entering a non-kernel task later (where we'll
-	 * end up with both kernel/user stack, and a user address
-	 * entry point.)
-	 */
 	task->kern_entry_point = entry_point;
 	task->kern_stack = kern_stack;
 	task->kern_stack_size = kern_stack_size;
@@ -197,13 +191,6 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	list_node_init(&task->task_list_node);
 	list_node_init(&task->task_active_node);
 
-	/*
-	 * For now we start with the entry point and kernel stack
-	 * being for the "kernel".  I'll worry about changing this
-	 * to support entering a non-kernel task later (where we'll
-	 * end up with both kernel/user stack, and a user address
-	 * entry point.)
-	 */
 	task->kern_entry_point = entry_point;
 	task->kern_stack = kern_stack;
 	task->kern_stack_size = kern_stack_size;
@@ -361,14 +348,6 @@ skip:
  * so free task related like resources like (upcoming)
  * handles, memory, ports, etc if required.
  *
- * Called with the kern_task_spinlock held - but technically
- * since it's no longer on the list it doesn't need to be
- * held with this lock.  Once this all works, it'd be good
- * to modify the reaping process to grab the whole list under
- * the kern_task_spinlock, remove them from the lists and
- * leave them on an on-stack list, and then free them without
- * the lock held.
- *
  * @param[in] task Task to cleanup
  */
 static void
@@ -376,8 +355,17 @@ kern_task_cleanup(struct kern_task *task)
 {
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x\n", task);
 	if (task->is_static_task == false) {
-		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
-		    "[task] TODO: actually FREE it!");
+		if (task->kern_stack != 0) {
+			KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[task] freeing stack!");
+			kern_physmem_free(task->kern_stack);
+		}
+		if (task->user_stack != 0) {
+			KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[task] freeing user stack!");
+			kern_physmem_free(task->user_stack);
+		}
+		/* XXX TODO: optional user heap region */
+
+		/* XXX TODO: optional task executable memory */
 	}
 }
 
