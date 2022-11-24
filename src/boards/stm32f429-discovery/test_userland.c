@@ -27,6 +27,7 @@
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
+#include "kern/core/malloc.h"
 
 #include "core/platform.h"
 
@@ -54,8 +55,8 @@ kern_test_user_task(void *arg)
 
 	while (1) {
 		/*
-		 * XXX TODO: looks like all six end up in the right spot
-		 * in the syscall handler?
+		 * Test invalid syscall; for now just for doing diagnostics, it doesn't
+		 * error out at all.
 		 */
 		syscall_test(0x12345678, 0x13579bdf, 0x2468ace0, 0x39647afb);
 
@@ -66,6 +67,9 @@ kern_test_user_task(void *arg)
 		syscall_test(0x00000002, 1000, 0, 0);
 		count++;
 	}
+
+	/* TASK_EXIT syscall */
+	syscall_test(0x00000004, 0, 0, 0);
 }
 
 void
@@ -74,17 +78,15 @@ setup_test_userland_task(void)
 	paddr_t kern_stack, user_stack;
 	struct kern_task *test_user_task;
 
-
 	/* XXX TODO: check for retval=0 */
 	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	user_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 
 	/*
 	 * XXX TODO: this is 512 instead of sizeof() because of limits
-	 * of the current physmem allocator.  Fix it to use the kernel malloc
-	 * allocator when I've written that.
+	 * of the current physmem allocator.
 	 */
-	test_user_task = (void *) kern_physmem_alloc(512, 4, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	test_user_task = kern_malloc(512, 4);
 
 	/* Create a user task with dynamically allocated RAM */
 	kern_task_user_init(test_user_task, kern_test_user_task, NULL,
@@ -93,7 +95,7 @@ setup_test_userland_task(void)
 	    512,
 	    (stack_addr_t) user_stack,
 	    512,
-	    false);
+	    TASK_FLAGS_DYNAMIC_KSTACK | TASK_FLAGS_DYNAMIC_USTACK | TASK_FLAGS_DYNAMIC_STRUCT);
 
 	/* And start it */
 	kern_task_start(test_user_task);

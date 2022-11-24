@@ -35,6 +35,10 @@
 
 #define	KERN_TASK_NAME_SZ		16
 
+#define	TASK_FLAGS_DYNAMIC_STRUCT		BIT_U32(0)
+#define	TASK_FLAGS_DYNAMIC_KSTACK		BIT_U32(1)
+#define	TASK_FLAGS_DYNAMIC_USTACK		BIT_U32(2)
+
 /*
  * The top three entries are very /specifically/ ordered for
  * the assembly routines for task switching and syscalls.
@@ -75,7 +79,8 @@ struct kern_task {
 
 	bool is_on_active_list;
 	bool is_on_dying_list;
-	bool is_static_task;		/* Task ram/stack isn't free()able */
+
+	uint32_t task_flags;
 
 	kern_task_state_t cur_state;
 
@@ -118,12 +123,12 @@ extern	struct kern_task * current_task;
  */
 extern	void kern_task_init(struct kern_task *task, void *entry_point,
 	    const char *name, stack_addr_t kern_stack, int kern_stack_size,
-	    bool is_static);
+	    uint32_t task_flags);
 extern	void kern_task_user_init(struct kern_task *task, void *entry_point,
 	    void *arg, const char *name,
 	    stack_addr_t kern_stack, int kern_stack_size,
 	    stack_addr_t user_stack, int user_stack_size,
-	    bool is_static);
+	    uint32_t task_flags);
 
 extern	void kern_task_setup(void);
 extern	void kern_task_start(struct kern_task *task);

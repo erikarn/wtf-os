@@ -117,7 +117,7 @@ kern_task_timer_set(struct kern_task *task, uint32_t msec)
 void
 kern_task_init(struct kern_task *task, void *entry_point,
     const char *name, stack_addr_t kern_stack, int kern_stack_size,
-    bool is_static)
+    uint32_t task_flags)
 {
 
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
@@ -132,13 +132,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	task->user_stack_size = 0;
 	task->is_user_task = 0;
 
-	/*
-	 * Mark whether the task memory/stack is static or dynamic.
-	 *
-	 * If it's static then we don't free it when we're cleaning up the
-	 * task.
-	 */
-	task->is_static_task = is_static;
+	task->task_flags = task_flags;
 
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
@@ -183,7 +177,7 @@ void
 kern_task_user_init(struct kern_task *task, void *entry_point,
     void *arg, const char *name, stack_addr_t kern_stack,
     int kern_stack_size, stack_addr_t user_stack, int user_stack_size,
-    bool is_static)
+    uint32_t task_flags)
 {
 
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
@@ -198,13 +192,7 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	task->user_stack_size = user_stack_size;
 	task->is_user_task = 1;
 
-	/*
-	 * Mark whether the task memory/stack is static or dynamic.
-	 *
-	 * If it's static then we don't free it when we're cleaning up the
-	 * task.
-	 */
-	task->is_static_task = is_static;
+	task->task_flags = task_flags;
 
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
@@ -353,20 +341,24 @@ skip:
 static void
 kern_task_cleanup(struct kern_task *task)
 {
-	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x\n", task);
-	if (task->is_static_task == false) {
-		if (task->kern_stack != 0) {
-			KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[task] freeing stack!");
-			kern_physmem_free(task->kern_stack);
-		}
-		if (task->user_stack != 0) {
-			KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[task] freeing user stack!");
-			kern_physmem_free(task->user_stack);
-		}
-		/* XXX TODO: optional user heap region */
-
-		/* XXX TODO: optional task executable memory */
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
+	if (task->task_flags & TASK_FLAGS_DYNAMIC_KSTACK) {
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing stack (0x%x)!", task->kern_stack);
+		kern_physmem_free(task->kern_stack);
 	}
+	if (task->task_flags & TASK_FLAGS_DYNAMIC_USTACK) {
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing user stack (0x%x)!", task->user_stack);
+		kern_physmem_free(task->user_stack);
+	}
+	/* XXX TODO: optional user heap region */
+
+	/* XXX TODO: optional task executable memory */
+
+	if (task->task_flags & TASK_FLAGS_DYNAMIC_STRUCT) {
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing struct (0x%x)!", task);
+		kern_free(task);
+	}
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "finished!");
 }
 
 /**
@@ -380,12 +372,13 @@ kern_cleanup_dying_tasks(struct list_head *task_dead_list)
 	struct kern_task *task;
 
 	while (task_dead_list->head != NULL) {
-		node = kern_task_dying_list.head;
+		node = task_dead_list->head;
 		task = container_of(node, struct kern_task,
-		    task_active_node);
-
+		    task_list_node);
+		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_NOTICE, "%s: task=0x%x", __func__, task);
 		list_delete(task_dead_list, &task->task_list_node);
 		kern_task_cleanup(task);
+		/* Note: task may be freed/invalid memory at this point */
 	}
 }
 
@@ -626,12 +619,12 @@ kern_task_setup(void)
 	/* Idle task will be magically made ready to run */
 	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack),
-	    true);
+	    0);
 
 	/* Test task will be made ready to run as well */
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack),
-	    true);
+	    0);
 
 	kern_task_start(&test_task);
 }
@@ -696,8 +689,9 @@ void
 kern_task_exit(void)
 {
 
-	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_NOTICE,
-	    "[task] %s: called", __func__);
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+	    "[task] %s: called, task 0x%x", __func__,
+	    current_task);
 
 	/*
 	 * XXX TODO: we may need to block here until it's
@@ -712,6 +706,11 @@ kern_task_exit(void)
 	platform_spinlock_lock(&kern_task_spinlock);
 	kern_task_set_state_locked(KERN_TASK_STATE_DYING);
 	platform_spinlock_unlock(&kern_task_spinlock);
+
+	/*
+	 * XXX TODO: spin on platform_kick_context_switch()
+	 * until we're just cleaned up?
+	 */
 
 	return;
 }
