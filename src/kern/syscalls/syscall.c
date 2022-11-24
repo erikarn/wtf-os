@@ -62,6 +62,9 @@ kern_syscall_handler(syscall_arg_t arg, syscall_arg_t arg2,
 	case SYSCALL_ID_CONSOLE_SLEEP:
 		retval = kern_syscall_sleep(arg1, arg2, arg3, arg4);
 		break;
+	case SYSCALL_ID_TASK_EXIT:
+		retval = kern_syscall_exit(arg1, arg2, arg3, arg4);
+		break;
 	default:
 		retval = -1;
 		break;

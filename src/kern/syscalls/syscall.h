@@ -47,6 +47,18 @@ extern	syscall_retval_t kern_syscall_sleep(syscall_arg_t arg1,
 
 #define	SYSCALL_ID_CONSOLE_WAIT			0x0003
 
+/*
+ * Exit the current userland task.
+ *
+ * arg1 - uint32_t exit status
+ * arg2 - na
+ * arg3 - na
+ * arg4 - na
+ */
+#define	SYSCALL_ID_TASK_EXIT			0x0004
+extern	syscall_retval_t kern_syscall_exit(syscall_arg_t arg1,
+	    syscall_arg_t arg2, syscall_arg_t arg3, syscall_arg_t arg4);
+
 
 extern	syscall_retval_t kern_syscall_handler(syscall_arg_t arg1,
 	    syscall_arg_t arg2, syscall_arg_t arg3, syscall_arg_t arg4);
