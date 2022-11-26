@@ -57,6 +57,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_userram_access.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_nvic.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_systick.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_mpu.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_svc.S
 

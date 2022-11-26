@@ -41,6 +41,7 @@
 #include "core/lock.h"
 #include "core/arm_m4_systick.h"
 #include "core/arm_m4_nvic.h"
+#include "core/arm_m4_mpu.h"
 
 extern uint32_t _estack, _ebss;
 
@@ -243,6 +244,9 @@ main(void)
         stm32f429_rcc_get_pclk2_freq());
     console_printf("[wtfos] tenms systick = 0x%08x\n",
         arm_m4_systick_get_tenms_calib());
+
+    // MPU init
+    arm_m4_mpu_init();
 
     /*
      * Physical memory region(s)
