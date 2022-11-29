@@ -57,7 +57,22 @@ arm_m4_syscall_handler:
 	ldr ip, [sp, #0]
 	msr PSP, ip
 
+	/*
+	 * Fetch the original function location, force thumb mode.
+	 * store it in r1 so we can use it across the unpriv boundary
+	 * below.
+	 */
+	ldr ip, =current_task
+	ldr ip, [ip]
+	ldr ip, [ip, #8]
+	orrs ip, ip, #1
+	mov r1, ip
+
 	/* Drop back to unpriv */
+	/*
+	 * At this point the MPU may be enabled, we can't touch
+	 * non-task memory (eg the TCB will be unavailable!)
+	 */
 	mrs ip, CONTROL
 	orrs ip, ip, #1
 	msr CONTROL, ip
@@ -65,19 +80,14 @@ arm_m4_syscall_handler:
 	/* barrier - don't run next code in old priv */
 	isb
 
+	/* Grab the return address back into IP for return */
+	mov ip, r1
+
 	/* Zero out caller-saved registers to not leak state */
 	/* (leave r0, it has a 32 bit return value) */
 	mov r1, #0
 	mov r2, #0
 	mov r3, #0
-
-	/*
-	 * Fetch the original function location, force thumb mode.
-	 */
-	ldr ip, =current_task
-	ldr ip, [ip]
-	ldr ip, [ip, #8]
-	orrs ip, ip, #1
 
 	/* Branch back */
 	bx ip
