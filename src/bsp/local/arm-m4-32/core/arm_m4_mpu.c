@@ -111,8 +111,28 @@ arm_m4_mpu_program_region(uint32_t region, uint32_t base_addr,
 	base_addr |= RMW(base_addr, ARM_M4_MPU_REG_RBAR_REGION, region);
 	base_addr |= ARM_M4_MPU_REG_RBAR_VALID;
 
+//	console_printf("%s: %d: 0x%08x / 0x%08x\n", __func__, region, base_addr, rasr_reg);
+
 	os_reg_write32(ARM_M4_MPU_BASE, ARM_M4_MPU_REG_RBAR, base_addr);
 	os_reg_write32(ARM_M4_MPU_BASE, ARM_M4_MPU_REG_RSAR, rasr_reg);
 
 	return (0);
+}
+
+/**
+ * Validate whether the address region is valid for the MPU.
+ *
+ * The address start and size have specific alignment requirements
+ * due to how the MPU hardware is doing the checks (ie, it's just
+ * generating a mask from the size.)
+ *
+ * @param[in] base_addr base address of the region
+ * @param[in] size size of the region in bytes
+ * @retval true if it's representable in an MPU entry, false otherwise
+ */
+bool
+arm_m4_validate_address_region(uint32_t base_addr, uint32_t size)
+{
+	/* XXX todo */
+	return (false);
 }

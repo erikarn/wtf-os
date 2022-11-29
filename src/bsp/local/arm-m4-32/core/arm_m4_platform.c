@@ -4,12 +4,15 @@
 
 #include <os/bit.h>
 #include <os/reg.h>
+#include <os/bitmask.h>
 
 #include <core/platform.h>
 #include <core/arm_m4_nvic.h>
 #include <core/arm_m4_systick.h>
+#include <core/arm_m4_mpu.h>
 #include <hw/types.h>
 #include <hw/scb_defs.h>
+#include <hw/arm_mpu_defs.h>
 #include <asm/asm_defs.h>
 
 #include <kern/console/console.h>
@@ -251,4 +254,130 @@ platform_timer_disable(void)
 {
 
 	arm_m4_systick_stop_counting();
+}
+
+void
+platform_mpu_enable(void)
+{
+	arm_m4_mpu_enable();
+}
+
+void
+platform_mpu_disable(void)
+{
+	arm_m4_mpu_disable();
+}
+
+void
+platform_mpu_table_init(platform_mpu_phys_entry_t *table)
+{
+	int i;
+	for (i = 0; i < PLATFORM_MPU_PHYS_ENTRY_COUNT; i++) {
+		table[i].base_reg = 0;
+		table[i].rasr_reg = 0;
+	}
+}
+
+/*
+ * Initialise this particular slot with the given info.
+ *
+ * Return false if it can't be programmed in.
+ *
+ * XXX this is a hack to get MPU programming up and going; will need
+ * to make this more .. generic? well designed? I dunno. Later.
+ * when this actually works.
+ */
+bool
+platform_mpu_table_set(platform_mpu_phys_entry_t *e, uint32_t base_addr,
+    uint32_t size, platform_prot_type_t prot)
+{
+	int i, sf = 0;
+	uint32_t mask, rasr_reg;
+
+	/* none? mark it blank */
+	if (prot == PLATFORM_PROT_TYPE_NONE) {
+		e->base_reg = 0;
+		e->rasr_reg = 0;
+		return (true);
+	}
+
+	/* minimum size */
+	if (size < 32) {
+		console_printf("%s: invalid size (%d)!\n", __func__, size);
+		return (false);
+	}
+
+	/* find the right size */
+	for (i = 4; i < 31; i++) {
+		if (1 << (i+1) == size) {
+			sf = i;
+			break;
+		}
+	}
+
+	/* not valid? whoops */
+	if (sf == 0) {
+		return (false);
+	}
+
+	/* calculate address mask */
+	mask = (1 << (sf + 1)) - 1;
+
+	/* check! */
+	if ((base_addr & mask) != 0) {
+		console_printf("%s: invalid alignment!\n", __func__);
+		return (false);
+	}
+
+	/* generate rasr - yeah, this should be a table, done at compile time */
+	rasr_reg = 0;
+	rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_SIZE, sf);
+	rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_SRD, 0);
+	rasr_reg |= ARM_M4_MPU_REG_RSAR_ENABLE;
+	switch (prot) {
+	case PLATFORM_PROT_TYPE_EXEC_RO:
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_TEX, 0x0);
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_AP, 0x6);
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_C;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_S;
+		break;
+	case PLATFORM_PROT_TYPE_NOEXEC_RW:
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_TEX, 0x1);
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_AP, 0x3);
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_B;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_C;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_S;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_XN;
+		break;
+
+	default:
+		console_printf("%s: invalid prot (%d)\n", __func__, prot);
+		return (false);
+	}
+
+	/* debug! */
+	console_printf("%s: addr=0x%x, size=%d, mask=0x%x, sf=%d, rasr_reg=0x%08x\n",
+	    __func__,
+	    base_addr,
+	    size,
+	    mask,
+	    sf, rasr_reg);
+
+	e->base_reg = base_addr;
+	e->rasr_reg = rasr_reg;
+
+	return (true);
+}
+
+/*
+ * Program this table into the hardware.
+ */
+void
+platform_mpu_table_program(const platform_mpu_phys_entry_t *table)
+{
+	int i;
+	for (i = 0; i < PLATFORM_MPU_PHYS_ENTRY_COUNT; i++) {
+		arm_m4_mpu_program_region(i, table[i].base_reg,
+		    table[i].rasr_reg);
+	}
 }

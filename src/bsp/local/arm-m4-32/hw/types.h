@@ -46,4 +46,12 @@ typedef uint32_t syscall_arg_t;
 /* syscall return value field (eg if registers) */
 typedef uint32_t syscall_retval_t;
 
+/* individual MPU entry field, since for now I only care about MPU, not MMU */
+typedef struct {
+	uint32_t base_reg;
+	uint32_t rasr_reg;
+} platform_mpu_phys_entry_t;
+
+#define	PLATFORM_MPU_PHYS_ENTRY_COUNT		8
+
 #endif	/* __ARM_M4_HW_TYPES_H__ */

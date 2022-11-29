@@ -80,7 +80,8 @@ setup_test_userland_task(void)
 
 	/* XXX TODO: check for retval=0 */
 	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-	user_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	/* XXX why yes we need this alignment for the MPU! */
+	user_stack = kern_physmem_alloc(512, 512, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 
 	/*
 	 * XXX TODO: this is 512 instead of sizeof() because of limits

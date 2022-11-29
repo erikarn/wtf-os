@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <hw/types.h>
+#include <hw/prot.h>
 
 extern	void platform_cpu_init(void);
 extern	void platform_cpu_idle(void);
@@ -28,5 +29,12 @@ extern	void platform_kick_context_switch(void);
 extern	void platform_timer_set_msec(uint32_t msec);
 extern	void platform_timer_enable(void);
 extern	void platform_timer_disable(void);
+
+extern	void platform_mpu_enable(void);
+extern	void platform_mpu_disable(void);
+extern	void platform_mpu_table_init(platform_mpu_phys_entry_t *table);
+extern	bool platform_mpu_table_set(platform_mpu_phys_entry_t *table,
+	    uint32_t addr, uint32_t size, platform_prot_type_t prot_type);
+extern	void platform_mpu_table_program(const platform_mpu_phys_entry_t *table);
 
 #endif	/* __ARM_M4_PLATFORM_H__ */

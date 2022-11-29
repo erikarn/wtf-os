@@ -35,9 +35,17 @@
 
 #define	KERN_TASK_NAME_SZ		16
 
+/* task struct itself was allocated via kern_malloc() */
 #define	TASK_FLAGS_DYNAMIC_STRUCT		BIT_U32(0)
+
+/* kernel stack was allocated via physmem */
 #define	TASK_FLAGS_DYNAMIC_KSTACK		BIT_U32(1)
+
+/* user stack was allocated via physmem */
 #define	TASK_FLAGS_DYNAMIC_USTACK		BIT_U32(2)
+
+/* enable the MPU for a userland task */
+#define	TASK_FLAGS_ENABLE_MPU			BIT_U32(3)
 
 /*
  * The top three entries are very /specifically/ ordered for
@@ -58,10 +66,17 @@
  */
 
 struct kern_task {
+	/* Fields used by the assembly routines */
 	volatile stack_addr_t stack_top;
 	volatile stack_addr_t kern_stack_top;
 	volatile stack_addr_t syscall_return_address;
 
+	uint32_t task_flags;
+
+	/* mpu table, yeah hard coded ew */
+	platform_mpu_phys_entry_t mpu_phys_table[PLATFORM_MPU_PHYS_ENTRY_COUNT];
+
+	/* Rest of this isn't used by the assembly routines */
 	char task_name[KERN_TASK_NAME_SZ];
 
 	stack_addr_t kern_stack;
@@ -80,7 +95,6 @@ struct kern_task {
 	bool is_on_active_list;
 	bool is_on_dying_list;
 
-	uint32_t task_flags;
 
 	kern_task_state_t cur_state;
 

@@ -159,6 +159,8 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	/* Default signal mask */
 	task->sig_mask = KERN_SIGNAL_TASK_MASK;
 
+	platform_mpu_table_init(&task->mpu_phys_table[0]);
+
 	/*
 	 * Last, add it to the global list of tasks.
 	 */
@@ -221,6 +223,25 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 
 	/* Default signal mask */
 	task->sig_mask = KERN_SIGNAL_TASK_MASK;
+
+	platform_mpu_table_init(&task->mpu_phys_table[0]);
+
+	/*
+	 * Next, populate the user stack, user heap and executable
+	 * range in the protection module.  We should complain and
+	 * potentially not create the task if protection is required
+	 * but we don't meet the requirements.
+	 *
+	 * XXX TODO: yes, all of flash hard-coded here for now!
+	 */
+
+	/* Executable region is XIP - all of flash */
+	platform_mpu_table_set(&task->mpu_phys_table[0], 0x08000000, 0x200000,
+	     PLATFORM_PROT_TYPE_EXEC_RO);
+	/* User stack - given region */
+	platform_mpu_table_set(&task->mpu_phys_table[1],
+	     user_stack, user_stack_size, PLATFORM_PROT_TYPE_NOEXEC_RW);
+	/* User heap (todo) - given region */
 
 	/*
 	 * Last, add it to the global list of tasks, but don't yet
@@ -327,6 +348,9 @@ skip:
 	 * running.
 	 */
 	kern_timer_taskcount(active_task_count);
+
+	/* Program in the MPU table - context switch will re-enable */
+	platform_mpu_table_program(&current_task->mpu_phys_table[0]);
 }
 
 /**
@@ -625,6 +649,10 @@ kern_task_setup(void)
 	kern_task_init(&test_task, kern_test_task_fn, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack),
 	    0);
+
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_CRIT,
+	    "[setup] idle task=0x%x, test task=0x%x\n",
+	    &idle_task, &test_task);
 
 	kern_task_start(&test_task);
 }

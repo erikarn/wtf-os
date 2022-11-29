@@ -10,6 +10,8 @@
 .global kern_task_select
 .global current_task
 .global arm_m4_task_switch
+.global arm_m4_mpu_enable
+.global arm_m4_mpu_disable
 
 .section .text.arm_m4_task_switch
 
@@ -48,12 +50,26 @@ arm_m4_task_switch:
 	/* Mask other interrupts above 0 whilst we figure out which task */
 	mov r0, #0xffffffff
 	msr basepri, r0
+
+	/* MPU disable */
+	bl arm_m4_mpu_disable
+
 	dsb
 	isb
 	bl kern_task_select
+
+	/* XXX TODO: MPU? Or leave it up to kern_task_select? */
+	bl arm_m4_mpu_enable
+	dsb
+	isb
+
+	/* Zero r0, reset basepri to re-enable interrupts */
 	mov r0, #0
 	msr basepri, r0
+
+	/* Pop stack registers */
 	ldmia sp!, {r0, r3}
+
 
 	/* The first item in pxCurrentTCB is the task top of stack. */
 	ldr r1, [r3]
