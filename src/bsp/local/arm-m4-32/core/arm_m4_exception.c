@@ -65,6 +65,8 @@ _arm_m4_default_exception_handler(void)
 	    os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_MMAR),
 	    os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_BFAR),
 	    os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_AFSR));
+	console_printf("[exception] HFSR=0x%x\n",
+	    os_reg_read32(ARM_M4_SCB_REG_BASE, ARM_M4_SCB_REG_HFSR));
 
 	/*
 	 * It'd be nice to dump out the stack frame too, wouldn't it?
