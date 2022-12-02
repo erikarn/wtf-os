@@ -19,7 +19,7 @@ AS_FLAGS = -g
 C_FLAGS = -g -O -Wall
 C_FLAGS += -TUSER_TASK.ld
 C_FLAGS += -nostartfiles
-C_FLAGS += -msingle-pic-base -mpic-register=r9 -mno-pic-data-is-text-relative -fPIC
+C_FLAGS += -msingle-pic-base -mpic-register=r9 -mpic-data-is-text-relative -fPIC
 
 C_FLAGS += -I.
 C_FLAGS += --specs=nosys.specs
