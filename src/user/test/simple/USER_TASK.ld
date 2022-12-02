@@ -6,14 +6,45 @@ ENTRY(_start)
 /* Specify the memory areas */
 MEMORY
 {
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 2048K
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 192K
-CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
+FLASH (rx)      : ORIGIN = 0x00000000, LENGTH = 128K
 }
 
 /* Define output sections */
 SECTIONS
 {
+
+  .header :
+  {
+    _header_start = .;
+
+    /*
+     * Header for the userland program loader to figure
+     * out what's going on.
+     */
+    LONG(LOADADDR(.text));
+    LONG(  SIZEOF(.text));
+
+    LONG(LOADADDR(.got));
+    LONG(  SIZEOF(.got));
+
+    LONG(LOADADDR(.bss));
+    LONG(  SIZEOF(.bss));
+
+    LONG(LOADADDR(.data));
+    LONG(  SIZEOF(.data));
+
+    LONG(LOADADDR(.rodata));
+    LONG(  SIZEOF(.rodata));
+
+    /* heap size */
+    LONG(1024);
+    /* stack size */
+    LONG(1024);
+
+    . = ALIGN(4);
+    _header_end = .;
+  } >FLASH
+
   /* The program code and other data goes into FLASH */
   .text :
   {
@@ -75,29 +106,25 @@ SECTIONS
   .data : 
   {
     . = ALIGN(4);
-    _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
 
     . = ALIGN(4);
-    _edata = .;        /* define a global symbol at data end */
-  } >RAM AT> FLASH
+  } >FLASH
 
   /* Uninitialized data section */
   . = ALIGN(4);
   .bss :
   {
     /* This is used by the startup in order to initialize the .bss secion */
-    _sbss = .;         /* define a global symbol at bss start */
-    __bss_start__ = _sbss;
+    __bss_start__ = .;
     *(.bss)
     *(.bss*)
     *(COMMON)
 
     . = ALIGN(4);
-    _ebss = .;         /* define a global symbol at bss end */
-    __bss_end__ = _ebss;
-  } >RAM
+    __bss_end__ = .;
+  } >FLASH
 
   /* Remove information from the standard libraries */
   /DISCARD/ :
