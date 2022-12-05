@@ -78,32 +78,19 @@ SECTIONS
     __exidx_end = .;
   } >FLASH
 
-  .preinit_array     :
-  {
-    PROVIDE_HIDDEN (__preinit_array_start = .);
-    KEEP (*(.preinit_array*))
-    PROVIDE_HIDDEN (__preinit_array_end = .);
-  } >FLASH
-  .init_array :
-  {
-    PROVIDE_HIDDEN (__init_array_start = .);
-    KEEP (*(SORT(.init_array.*)))
-    KEEP (*(.init_array*))
-    PROVIDE_HIDDEN (__init_array_end = .);
-  } >FLASH
-  .fini_array :
-  {
-    PROVIDE_HIDDEN (__fini_array_start = .);
-    KEEP (*(SORT(.fini_array.*)))
-    KEEP (*(.fini_array*))
-    PROVIDE_HIDDEN (__fini_array_end = .);
-  } >FLASH
+  /*
+   * note: deleted .preinit, .init, .fini for now as
+   * I don't have any shared library support yet, and
+   * even if I did I don't know how these would map to
+   * PIC / r9 relative stuff.  Will revisit those once
+   * dynamic loaded/run userland is actually bootstrapped.
+   */
 
   /* used by the startup to initialize data */
   _sidata = LOADADDR(.data);
 
   /* Initialized data sections goes into RAM, load LMA copy after code */
-  .data : 
+  .data :
   {
     . = ALIGN(4);
     *(.data)           /* .data sections */
