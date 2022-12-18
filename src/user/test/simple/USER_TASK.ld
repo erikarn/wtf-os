@@ -122,6 +122,13 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+
+  /* pad to a 32 byte boundary for now */
+  .image_end :
+  {
+    LONG(0xffffffff);
+    . = ALIGN(32);
+  } > FLASH=0xff
 }
 
 

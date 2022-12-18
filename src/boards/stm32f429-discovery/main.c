@@ -36,6 +36,7 @@
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
+#include "kern/flash/flash_resource.h"
 
 #include "core/platform.h"
 #include "core/lock.h"
@@ -43,7 +44,10 @@
 #include "core/arm_m4_nvic.h"
 #include "core/arm_m4_mpu.h"
 
+static flash_resource_span_t flash_span;
+
 extern uint32_t _estack, _ebss;
+extern uint32_t _flash_resource_start;
 
 /* XXX yes, this should be a config option */
 #define	ESTACK_MSP_SIZE		1024
@@ -247,6 +251,9 @@ main(void)
 
     // MPU init
     arm_m4_mpu_init();
+
+    // Flash resource init
+    flash_resource_span_init(&flash_span, (uintptr_t) &_flash_resource_start, 1048576);
 
     /*
      * Physical memory region(s)

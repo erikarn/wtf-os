@@ -183,6 +183,19 @@ SECTIONS
   }
 
   .ARM.attributes 0 : { *(.ARM.attributes) }
+
+  /*
+   * End of flash, let's align it to a 32 byte boundary
+   * as an experiment, and then we can start playing with
+   * appending resources to the end of it.
+   */
+  ._flash_image_end :
+  {
+    LONG(0xffffffff);
+    . = ALIGN(32);
+    _flash_resource_start = .;
+    __flash_resource_start__ = _flash_resource_start;
+  } >FLASH =0xff
 }
 
 
