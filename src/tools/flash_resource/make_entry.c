@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <limits.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <err.h>
@@ -195,20 +196,74 @@ payload_read(const char *fn, size_t *payload_buf_size, size_t *payload_size,
 	return (ptr);
 }
 
-int
-main(int argc, const char *argv[])
+void
+usage(const char *progname)
 {
-	const char *dest, *src, *label;
+	printf("%s: [-s source] [-d destination] [-t typeid] [-l label]\n",
+	     progname);
+	printf("\n");
+	printf("\t-s <source> - source payload file\n");
+	printf("\t-d <destination> - output file\n");
+	printf("\t-t <typeid> - type field (32 bit integer)\n");
+	printf("\t-l <label> - string label for lookup/naming\n");
+}
+
+int
+main(int argc, char **argv)
+{
+	const char *dest = NULL, *src = NULL, *label = NULL, *typestr = NULL;
+	const char *argv0;
 	char *payload, *hdr;
 	size_t payload_size, payload_buf_size, hdr_buf_size, size;
 	ssize_t ret;
 	uint32_t type;
 	int fd;
+	int ch;
 
-	dest = argv[1];
-	src = argv[2];
-	type = atoi(argv[3]);
-	label = argv[4];
+	argv0 = argv[0];
+
+	/* parse command line args */
+	while ((ch = getopt(argc, argv, "s:d:t:l:h")) != -1) {
+		switch (ch) {
+		case 's':
+			src = optarg;
+			break;
+		case 'd':
+			dest = optarg;
+			break;
+		case 't':
+			typestr = optarg;
+			break;
+		case 'l':
+			label = optarg;
+			break;
+		case 'h':
+		default:
+			usage(argv0);
+			exit(127);
+		}
+	}
+	argc -= optind;
+	argv += optind;
+
+	if (src == NULL) {
+		printf("ERROR: missing -s (source payload)\n");
+		exit(127);
+	}
+	if (dest == NULL) {
+		printf("ERROR: missing -d (destination filename)\n");
+		exit(127);
+	}
+	if (typestr == NULL) {
+		printf("ERROR: missing -t (type integer)\n");
+		exit(127);
+	}
+	if (label == NULL) {
+		printf("ERROR: missing -l (label)\n");
+		exit(127);
+	}
+
+	type = strtoul(typestr, NULL, 0);
 
 	/* read payload into a buf, buffer size is aligned */
 	payload = payload_read(src, &payload_buf_size, &payload_size, ALIGNMENT);
@@ -239,7 +294,13 @@ main(int argc, const char *argv[])
 
 	/* write out our assembled buffer */
 	ret = write(fd, hdr, hdr_buf_size);
+	if (ret != hdr_buf_size) {
+		err(1, "%s: write (size mismatch)", __func__);
+	}
 	ret = write(fd, payload, payload_buf_size);
+	if (ret != payload_buf_size) {
+		err(1, "%s: write (size mismatch)", __func__);
+	}
 
 	/* done! */
 
