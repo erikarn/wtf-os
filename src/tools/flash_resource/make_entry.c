@@ -35,8 +35,11 @@ struct flash_resource_entry_header {
 uint32_t
 align_uint32(uint32_t val, uint32_t align)
 {
+	uint32_t v;
 
-	return (val + (align - (val & align)));
+	v = (val + (align - (val % align)));
+
+	return (v);
 }
 
 /*
@@ -119,14 +122,18 @@ populate_header_buf(uint32_t type, const char *label, uint32_t payload_length,
 	}
 	p = buf;
 
-	val = ENTRY_MAGIC; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = 0 /* cksum */; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = type; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = length; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = alignment; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = strlen(label); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = payload_length; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
-	val = 0 /* rsv0 */; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	/* Assemble header */
+	val = htole32(ENTRY_MAGIC); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(0) /* cksum */; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(type); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(length); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(alignment); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(strlen(label)); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(payload_length); memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+	val = htole32(0) /* rsv0 */; memcpy(p, &val, sizeof(uint32_t)); p += sizeof(uint32_t);
+
+	/* Add string, it isn't NUL terminated */
+	memcpy(p, label, strlen(label));
 
 	*header_buf_len = hdr_len;
 
