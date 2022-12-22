@@ -16,10 +16,31 @@
  *
  * SPDX-Licence-Identifier: GPL-3.0-or-later
  */
-#ifndef	__LIB_MEM_MEM_H__
-#define	__LIB_MEM_MEM_H__
 
-extern	void kern_bzero(void *buf, size_t len);
-extern	void *kern_memcpy(void *dst, const void *src, size_t len);
+#ifndef	__FLASH_FLASH_RESOURCE_HEADER_H__
+#define	__FLASH_FLASH_RESOURCE_HEADER_H__
 
-#endif	/* __LIB_MEM_MEM_H__ */
+/*
+ * This struct represents a header.  It shouldn't be serialised/deserialised
+ * straight from flash because who knows what the compiler will do.
+ *
+ * Fields are uint32_t's stored in little endian format.
+ */
+
+struct flash_resource_entry_header {
+	uint32_t magic;
+	uint32_t checksum;
+	uint32_t type;
+	uint32_t length;
+	uint32_t alignment;
+	uint32_t namelength;
+	uint32_t payload_length;
+	uint32_t rsv0;
+};
+
+#define		ENTRY_MAGIC	0x05091979
+#define		HEADER_SIZE	(sizeof(uint32_t) * 8)
+
+#define		PAK_ALIGNMENT	32
+
+#endif	/* __FLASH_FLASH_RESOURCE_HEADER_H__ */

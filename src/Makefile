@@ -78,9 +78,11 @@ SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strnlen.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlcpy.c
+SRCS += $(KERN_SUBDIR)/libraries/string/strlcpyn.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strncmp.c
 SRCS += $(KERN_SUBDIR)/libraries/list/list.c
 SRCS += $(KERN_SUBDIR)/libraries/mem/bzero.c
+SRCS += $(KERN_SUBDIR)/libraries/mem/memcpy.c
 
 SRCS += $(KERN_SUBDIR)/flash/flash_resource.c
 
@@ -106,14 +108,22 @@ SS_OBJS = $(SS_SRCS:%.S=%.o)
 
 all: wtfos
 
-wtfos: wtfos.elf
+wtfos: wtfos.img
+
+wtfos.bin: wtfos.elf
+	$(OBJCOPY) -O binary wtfos.elf wtfos.bin
+
+# Yeah I definitely need build rules for the tools and
+# userland binary, but for now
+wtfos.img: wtfos.bin
+	tools/flash_resource/make_entry -s user/test/simple/test.bin -d test.pak -t 0x0102cdef -l TEST.BIN
+	cat wtfos.bin test.pak | dd of=wtfos.img
 
 wtfos.elf: $(C_OBJS) $(S_OBJS) $(SS_OBJS)
 	$(CC) $(CFLAGS) $(C_OBJS) $(S_OBJS) $(SS_OBJS) -o $@
-	$(OBJCOPY) -O binary wtfos.elf wtfos.bin
 
 flash: wtfos
-	st-flash --connect-under-reset write wtfos.bin 0x8000000
+	st-flash --connect-under-reset write wtfos.img 0x8000000
 
 clean:
 	rm -f $(C_OBJS) $(S_OBJS) $(SS_OBJS)

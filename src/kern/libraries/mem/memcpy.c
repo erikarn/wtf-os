@@ -16,10 +16,23 @@
  *
  * SPDX-Licence-Identifier: GPL-3.0-or-later
  */
-#ifndef	__LIB_MEM_MEM_H__
-#define	__LIB_MEM_MEM_H__
+#include <stddef.h>
+#include <stdint.h>
 
-extern	void kern_bzero(void *buf, size_t len);
-extern	void *kern_memcpy(void *dst, const void *src, size_t len);
+#include <kern/libraries/mem/mem.h>
 
-#endif	/* __LIB_MEM_MEM_H__ */
+/**
+ * kern_memcpy - zero memory.
+ */
+void *
+kern_memcpy(void *dst, const void *src, size_t len)
+{
+	char *d = dst;
+	const char *s = src;
+	while (len != 0) {
+		*d++ = *s++;
+		len--;
+	}
+
+	return (dst);
+}

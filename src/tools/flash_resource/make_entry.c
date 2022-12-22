@@ -9,26 +9,7 @@
 #include <sys/stat.h>
 #include <sys/endian.h>
 
-/*
- * XXX TODO: put in a shared header file when we're done!
- */
-
-#if 0
-struct flash_resource_entry_header {
-	uint32_t magic; /* magic value for checking */
-	uint32_t checksum; /* crc32 checksum of whole thing */
-	uint32_t type; /* type */
-	uint32_t length; /* length of whole entry, incl header */
-	uint32_t alignment; /* alignment of payload */
-	uint32_t namelength; /* length of name field */
-	uint32_t payload_length; /* length of payload */
-	uint32_t rsv0; /* reserved */
-};
-#endif
-
-#define		ENTRY_MAGIC	0x05091979
-#define		HEADER_SIZE	(sizeof(uint32_t) * 8)
-#define		ALIGNMENT	32
+#include "../../kern/flash/flash_resource_header.h"
 
 /*
  * Return the next aligned value from the given address + alignment.
@@ -114,7 +95,7 @@ populate_header_buf(uint32_t type, const char *label, uint32_t payload_length,
 	size_t hdr_len;
 	uint32_t val;
 
-	hdr_len = calculate_header_size(strlen(label), ALIGNMENT);
+	hdr_len = calculate_header_size(strlen(label), PAK_ALIGNMENT);
 
 	buf = calloc(1, hdr_len);
 	if (buf == NULL) {
@@ -266,18 +247,20 @@ main(int argc, char **argv)
 	type = strtoul(typestr, NULL, 0);
 
 	/* read payload into a buf, buffer size is aligned */
-	payload = payload_read(src, &payload_buf_size, &payload_size, ALIGNMENT);
+	payload = payload_read(src, &payload_buf_size, &payload_size,
+	     PAK_ALIGNMENT);
 	if (payload == NULL) {
 		printf("ERROR: didn't manage to read the payload!\n");
 		exit(1);
 	}
 
 	/* calculate total size */
-	size = calculate_buffer_size(payload_size, strlen(label), ALIGNMENT);
+	size = calculate_buffer_size(payload_size, strlen(label),
+	     PAK_ALIGNMENT);
 
 	/* populate header contents, buffer size is also aligned */
 	hdr = populate_header_buf(type, label, payload_size, size,
-	    &hdr_buf_size, ALIGNMENT);
+	    &hdr_buf_size, PAK_ALIGNMENT);
 	if (hdr == NULL) {
 		printf("ERROR: didn't manage to populate the header!\n");
 		exit(1);
@@ -287,7 +270,7 @@ main(int argc, char **argv)
 	    hdr_buf_size, payload_buf_size, size);
 
 	/* Time to write out our buffer */
-	fd = open(dest, O_RDWR | O_CREAT | O_TRUNC);
+	fd = open(dest, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd < 0) {
 		err(1, "open");
 	}
