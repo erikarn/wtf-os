@@ -83,6 +83,7 @@ SRCS += $(KERN_SUBDIR)/libraries/string/strncmp.c
 SRCS += $(KERN_SUBDIR)/libraries/list/list.c
 SRCS += $(KERN_SUBDIR)/libraries/mem/bzero.c
 SRCS += $(KERN_SUBDIR)/libraries/mem/memcpy.c
+SRCS += $(KERN_SUBDIR)/libraries/crc32/crc32b.c
 
 SRCS += $(KERN_SUBDIR)/flash/flash_resource.c
 
