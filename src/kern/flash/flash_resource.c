@@ -28,18 +28,7 @@
 
 #include <kern/flash/flash_resource.h>
 #include <kern/flash/flash_resource_header.h>
-
-/*
- * XXX TODO: put this in a library, not here
- */
-const paddr_t
-align_paddr_t(paddr_t val, uint32_t align)
-{
-	paddr_t v;
-
-	v = (val + (align - (val % align)));
-	return (v);
-}
+#include <kern/flash/flash_resource_pak.h>
 
 /*
  * Check the pak at the given location.  Populate the header
