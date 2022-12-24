@@ -89,6 +89,8 @@ SRCS += $(KERN_SUBDIR)/libraries/align/align_uint32_t.c
 
 SRCS += $(KERN_SUBDIR)/flash/flash_resource.c
 
+SRCS += $(KERN_SUBDIR)/user/user_exec.c
+
 # The board initialisation routine
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userland.c
