@@ -28,6 +28,8 @@
 #include <kern/libraries/mem/mem.h>
 #include <kern/libraries/align/align_paddr.h>
 
+#include <kern/user/user_exec.h>
+
 /*
  * This kernel code module drives initialising a user task from either
  * an XIP task or (later on) loading into memory from external storage.
@@ -35,56 +37,6 @@
  * It takes care of populating the GOT based on the contents of the
  * user binary.
  */
-
-/*
- * As implemented in USER_TASK.ld, there are a handful of fields in
- * the header before the used binary itself.  User binaries are PIC
- * using r9 as the base pointer to GOT.
- *
- * Header contents, aligned on DWORD boundaries (4 bytes):
- *
- * + text offset (uint32_t)
- * + text size
- * + GOT offset
- * + GOT size
- * + BSS offset
- * + BSS size
- * + data offset
- * + data size
- * + rodata offset
- * + rodata size
- * + heap size
- * + stack size
- */
-
-struct user_exec_program_header {
-	uint32_t text_offset;
-	uint32_t text_size;
-	uint32_t got_offset;
-	uint32_t got_size;
-	uint32_t bss_offset;
-	uint32_t bss_size;
-	uint32_t data_offset;
-	uint32_t data_size;
-	uint32_t rodata_offset;
-	uint32_t rodata_size;
-
-	uint32_t heap_size;
-	uint32_t stack_size;
-};
-
-/* Note: is paddr_t the correct address type to use here? */
-struct user_exec_program_addrs {
-	paddr_t text_addr;
-	paddr_t got_addr;
-	paddr_t bss_addr;
-	paddr_t data_addr;
-	paddr_t rodata_addr;
-
-	paddr_t heap_addr;
-	paddr_t stack_addr;
-};
-
 
 static bool
 is_in_range(uint32_t val, uint32_t start, uint32_t len)
