@@ -35,11 +35,11 @@
  * and return true if it's valid.
  */
 bool
-flash_resource_check_pak(paddr_t start, struct flash_resource_entry_header *hdr)
+flash_resource_check_pak(paddr_t start, struct flash_resource_pak *pak,
+    char *label, int labellen)
 {
 	uint32_t val;
 	const char *s = (const char *)(uintptr_t *) start;
-	char label[16] = { 0 };
 
 	/* XXX TODO: these really need to be converted to le32! */
 	kern_memcpy(&val, s, sizeof(uint32_t));
@@ -57,15 +57,15 @@ flash_resource_check_pak(paddr_t start, struct flash_resource_entry_header *hdr)
 	 * XXX TODO: yes, should really build tools to build parsers for
 	 * stuff like this
 	 */
-	hdr->magic = val; s += sizeof(uint32_t);
+	pak->hdr.magic = val; s += sizeof(uint32_t);
 
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->checksum = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->type = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->length = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->alignment = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->namelength = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->payload_length = val; s = s + sizeof(uint32_t);
-	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ hdr->rsv0 = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.checksum = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.type = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.length = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.alignment = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.namelength = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.payload_length = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, s, sizeof(uint32_t)); /* le32 */ pak->hdr.rsv0 = val; s = s + sizeof(uint32_t);
 
 	/* XXX TODO: crc32b check */
 
@@ -75,12 +75,12 @@ flash_resource_check_pak(paddr_t start, struct flash_resource_entry_header *hdr)
 	 * The string starts at the end of the header, no alignment
 	 * requirements.
 	 */
-	kern_strlcpyn(label, s, sizeof(label), hdr->namelength);
+	kern_strlcpyn(label, s, labellen, pak->hdr.namelength);
 
 	console_printf("[console] pak: %s: %d byte payload, %d byte total length\n",
 	    label,
-	    hdr->payload_length,
-	    hdr->length);
+	    pak->hdr.payload_length,
+	    pak->hdr.length);
 
 	return (true);
 }
@@ -89,14 +89,16 @@ bool
 flash_resource_span_init(flash_resource_span_t *span, paddr_t start,
     size_t size)
 {
-	struct flash_resource_entry_header hdr;
+	struct flash_resource_pak pak;
 	paddr_t end = start + size;
+	char label[16];
 
 	if (span->flags & FLASH_RESOURCE_SPAN_FLAGS_SETUP)
 		return (false);
 
 	span->start = start;
 	span->size = size;
+	span->end = end;
 	span->flags |= FLASH_RESOURCE_SPAN_FLAGS_SETUP;
 
 	/* And here's where we COULD scan the span to gather some useful info */
@@ -105,11 +107,43 @@ flash_resource_span_init(flash_resource_span_t *span, paddr_t start,
 	    start, size);
 
 	/* Walk the paks we have */
-	while (flash_resource_check_pak(start, &hdr)) {
-		start += hdr.length;
+	kern_bzero(label, sizeof(label));
+	while (flash_resource_check_pak(start, &pak, label, sizeof(label))) {
+		start += pak.hdr.length;
 		if (start > end)
 			break;
+		kern_bzero(label, sizeof(label));
 	}
 
 	return (true);
+}
+
+bool
+flash_resource_lookup(flash_resource_span_t *span,
+    struct flash_resource_pak *pak, const char *label)
+{
+	paddr_t start;
+	char pak_label[16];
+
+	if ((span->flags & FLASH_RESOURCE_SPAN_FLAGS_SETUP) == 0) {
+		return (false);
+	}
+
+	/* Walk the paks we have */
+	kern_bzero(pak_label, sizeof(pak_label));
+	start = span->start;
+	while (flash_resource_check_pak(start, pak, pak_label,
+	    sizeof(pak_label))) {
+		/* XXX TODO: we REALLY need an internal non-crap string representation! */
+		if (kern_strncmp(pak_label, label, sizeof(pak_label)) == 0) {
+			return (true);
+		}
+		start += pak->hdr.length;
+		if (start > span->end)
+			break;
+		kern_bzero(pak_label, sizeof(pak_label));
+	}
+
+	return (false);
+
 }

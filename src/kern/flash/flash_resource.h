@@ -30,13 +30,18 @@
 
 struct flash_resource_span {
 	paddr_t start;
+	paddr_t end;
 	size_t size;
 	uint32_t flags;
 };
 
 typedef struct flash_resource_span flash_resource_span_t;
+typedef struct flash_resource_pak flash_resource_pak_t;
 
 extern	bool flash_resource_span_init(flash_resource_span_t *span,
 	     paddr_t start, size_t size);
+extern	bool flash_resource_lookup(flash_resource_span_t *span,
+	    flash_resource_pak_t *pak, const char *label);
+
 
 #endif	/* __FLASH_FLASH_RESOURCE_H__ */
