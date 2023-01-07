@@ -21,10 +21,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "hw/types.h"
+
 #include <kern/console/console.h>
 
 #include <kern/libraries/mem/mem.h>
 #include <kern/libraries/string/string.h>
+#include <kern/libraries/align/align_paddr.h>
 
 #include <kern/flash/flash_resource.h>
 #include <kern/flash/flash_resource_header.h>
@@ -81,6 +84,12 @@ flash_resource_check_pak(paddr_t start, struct flash_resource_pak *pak,
 	    label,
 	    pak->hdr.payload_length,
 	    pak->hdr.length);
+
+	/* Payload starts at aligned value after the start + hdr + string */
+	pak->payload_start =
+	    align_paddr_t(start + HEADER_SIZE + pak->hdr.namelength,
+	    pak->hdr.alignment);
+	pak->payload_size = pak->hdr.payload_length;
 
 	return (true);
 }
