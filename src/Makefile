@@ -65,6 +65,7 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_svc.S
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/core/task.c
+SRCS += $(KERN_SUBDIR)/core/task_mem.c
 SRCS += $(KERN_SUBDIR)/core/timer.c
 SRCS += $(KERN_SUBDIR)/core/physmem.c
 SRCS += $(KERN_SUBDIR)/core/logging.c

@@ -30,6 +30,7 @@
 #include <kern/core/exception.h>
 #include <kern/core/signal.h>
 #include <kern/core/task.h>
+#include <kern/core/task_mem.h>
 #include <kern/core/timer.h>
 #include <kern/core/malloc.h>
 #include <kern/core/logging.h>
@@ -366,18 +367,11 @@ static void
 kern_task_cleanup(struct kern_task *task)
 {
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
-	if (task->task_flags & TASK_FLAGS_DYNAMIC_KSTACK) {
-		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing stack (0x%x)!", task->kern_stack);
-		kern_physmem_free(task->kern_stack);
-	}
-	if (task->task_flags & TASK_FLAGS_DYNAMIC_USTACK) {
-		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing user stack (0x%x)!", task->user_stack);
-		kern_physmem_free(task->user_stack);
-	}
-	/* XXX TODO: optional user heap region */
 
-	/* XXX TODO: optional task executable memory */
+	/* Clean up memory regions where required */
+	kern_task_mem_cleanup(task);
 
+	/* Free task struct memory if allocated */
 	if (task->task_flags & TASK_FLAGS_DYNAMIC_STRUCT) {
 		KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "freeing struct (0x%x)!", task);
 		kern_free(task);
