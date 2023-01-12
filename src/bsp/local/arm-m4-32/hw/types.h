@@ -24,14 +24,17 @@
 
 /* Note: for M4, there's no virtual address types */
 
-/* Physical address */
+/* Physical address location and range size */
 typedef uint32_t paddr_t;
+typedef uint32_t paddr_size_t;
 
 /* stack address for kernel/userland */
 typedef uint32_t stack_addr_t;
+typedef uint32_t stack_size_t;
 
 /* user address */
 typedef uint32_t uaddr_t;
+typedef uint32_t uaddr_size_t;
 
 /* kernel memory for executable code */
 typedef uint32_t kern_code_exec_addr_t;
