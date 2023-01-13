@@ -28,5 +28,6 @@
 struct kern_task;
 
 extern	void kern_task_mem_cleanup(struct kern_task *task);
+extern	bool kern_task_mem_setup_mpu(struct kern_task *task);
 
 #endif	/* __KERN_TASKMEM_H__ */

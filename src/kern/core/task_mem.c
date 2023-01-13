@@ -82,3 +82,44 @@ kern_task_mem_cleanup(struct kern_task *task)
 
 	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO, "finished!");
 }
+
+/*
+ * Initialise the MPU table for the given task.
+ *
+ * This initialises the MPU table based on the given memory regions
+ * for the kern/user task, and will return an error if we can't
+ * allocate them appropriately (eg the alignment/size are not
+ * compatible.)
+ *
+ * Yes, this is hard-coded and very specific to the cortex-M4;
+ * chances are it should be migrated into the platform code.
+ */
+bool
+kern_task_mem_setup_mpu(struct kern_task *task)
+{
+
+	/* Initial table setup, no active regions */
+	platform_mpu_table_init(&task->mpu_phys_table[0]);
+
+	/* Executable region - all of XIP for now */
+	platform_mpu_table_set(&task->mpu_phys_table[0],
+	    0x08000000, 0x200000,
+	    PLATFORM_PROT_TYPE_EXEC_RO);
+
+	/* User stack */
+	platform_mpu_table_set(&task->mpu_phys_table[1],
+	    task->user_stack, task->user_stack_size,
+	    PLATFORM_PROT_TYPE_NOEXEC_RW);
+
+	/* User heap */
+
+	/* task GOT */
+
+	/* task data */
+
+	/* task rodata */
+
+	/* task BSS */
+
+	return (true);
+}
