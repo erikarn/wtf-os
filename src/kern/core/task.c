@@ -109,31 +109,13 @@ kern_task_timer_set(struct kern_task *task, uint32_t msec)
 	return (ret);
 }
 
-/**
- * Initialise the given task structure for a kernel task.
- *
- * This just sets the generic and the platform side of things up
- * but doesn't add it to the runlist or start the task.
- */
 void
-kern_task_init(struct kern_task *task, void *entry_point,
-    const char *name, stack_addr_t kern_stack, int kern_stack_size,
-    uint32_t task_flags)
+kern_task_generic_init(struct kern_task *task, const char *name)
 {
-
 	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
 
 	list_node_init(&task->task_list_node);
 	list_node_init(&task->task_active_node);
-
-	task->kern_entry_point = entry_point;
-	task->kern_stack = kern_stack;
-	task->kern_stack_size = kern_stack_size;
-	task->user_stack = 0;
-	task->user_stack_size = 0;
-	task->is_user_task = 0;
-
-	task->task_flags = task_flags;
 
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
@@ -147,21 +129,13 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 */
 	task->cur_state = KERN_TASK_STATE_IDLE;
 
-	/*
-	 * Next we call into the platform code to initialise our
-	 * stack with the above parameters so we can context
-	 * switch /into/ the task when we're ready to run it.
-	 */
-	task->stack_top = platform_task_stack_setup(
-	    task->kern_stack + kern_stack_size,
-	    entry_point, NULL, false);
-	task->kern_stack_top = 0;
-
 	/* Default signal mask */
 	task->sig_mask = KERN_SIGNAL_TASK_MASK;
+}
 
-	platform_mpu_table_init(&task->mpu_phys_table[0]);
-
+void
+kern_task_generic_init_finish(struct kern_task *task)
+{
 	/*
 	 * Last, add it to the global list of tasks.
 	 */
@@ -177,16 +151,52 @@ kern_task_init(struct kern_task *task, void *entry_point,
  * but doesn't add it to the runlist or start the task.
  */
 void
+kern_task_init(struct kern_task *task, void *entry_point,
+    const char *name, stack_addr_t kern_stack, int kern_stack_size,
+    uint32_t task_flags)
+{
+
+	kern_task_generic_init(task, name);
+
+	task->kern_entry_point = entry_point;
+	task->kern_stack = kern_stack;
+	task->kern_stack_size = kern_stack_size;
+	task->user_stack = 0;
+	task->user_stack_size = 0;
+	task->is_user_task = 0;
+
+	task->task_flags = task_flags;
+
+	/*
+	 * Next we call into the platform code to initialise our
+	 * stack with the above parameters so we can context
+	 * switch /into/ the task when we're ready to run it.
+	 */
+	task->stack_top = platform_task_stack_setup(
+	    task->kern_stack + kern_stack_size,
+	    entry_point, NULL, false);
+	/* kern_stack_top isn't used for kernel tasks */
+	task->kern_stack_top = 0;
+
+	platform_mpu_table_init(&task->mpu_phys_table[0]);
+
+	kern_task_generic_init_finish(task);
+}
+
+/**
+ * Initialise the given task structure for a kernel task.
+ *
+ * This just sets the generic and the platform side of things up
+ * but doesn't add it to the runlist or start the task.
+ */
+void
 kern_task_user_init(struct kern_task *task, void *entry_point,
     void *arg, const char *name, stack_addr_t kern_stack,
     int kern_stack_size, stack_addr_t user_stack, int user_stack_size,
     uint32_t task_flags)
 {
 
-	kern_strlcpy(task->task_name, name, KERN_TASK_NAME_SZ);
-
-	list_node_init(&task->task_list_node);
-	list_node_init(&task->task_active_node);
+	kern_task_generic_init(task, name);
 
 	task->kern_entry_point = entry_point;
 	task->kern_stack = kern_stack;
@@ -196,18 +206,6 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	task->is_user_task = 1;
 
 	task->task_flags = task_flags;
-
-	task->is_on_active_list = false;
-	task->is_on_dying_list = false;
-
-	/* Timer setup */
-	kern_timer_event_setup(&task->sleep_ev, kern_task_timer_ev_fn, task,
-	    0, 0);
-
-	/*
-	 * Mark this task as idle, we haven't started it running.
-	 */
-	task->cur_state = KERN_TASK_STATE_IDLE;
 
 	/*
 	 * Next we call into the platform code to initialise our
@@ -222,19 +220,10 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	/* And we program in our kernel stack for privileged code */
 	task->kern_stack_top = task->kern_stack + kern_stack_size;
 
-	/* Default signal mask */
-	task->sig_mask = KERN_SIGNAL_TASK_MASK;
-
 	/* If required, setup the MPU for the user regions */
 	(void) kern_task_mem_setup_mpu(task);
 
-	/*
-	 * Last, add it to the global list of tasks, but don't yet
-	 * make it ready to run.
-	 */
-	platform_spinlock_lock(&kern_task_spinlock);
-	list_add_tail(&kern_task_list, &task->task_list_node);
-	platform_spinlock_unlock(&kern_task_spinlock);
+	kern_task_generic_init_finish(task);
 }
 
 /**
