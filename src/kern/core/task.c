@@ -158,11 +158,14 @@ kern_task_init(struct kern_task *task, void *entry_point,
 
 	kern_task_generic_init(task, name);
 
+	kern_task_mem_init(task);
+
 	task->kern_entry_point = entry_point;
-	task->kern_stack = kern_stack;
-	task->kern_stack_size = kern_stack_size;
-	task->user_stack = 0;
-	task->user_stack_size = 0;
+
+	kern_task_mem_set(task, TASK_MEM_ID_TEXT, (paddr_t) entry_point, 0, false);
+	kern_task_mem_set(task, TASK_MEM_ID_KERN_STACK, kern_stack, kern_stack_size,
+	    !! (task_flags & TASK_FLAGS_DYNAMIC_KSTACK));
+
 	task->is_user_task = 0;
 
 	task->task_flags = task_flags;
@@ -173,7 +176,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 * switch /into/ the task when we're ready to run it.
 	 */
 	task->stack_top = platform_task_stack_setup(
-	    task->kern_stack + kern_stack_size,
+	    kern_stack + kern_stack_size,
 	    entry_point, NULL, false);
 	/* kern_stack_top isn't used for kernel tasks */
 	task->kern_stack_top = 0;
@@ -199,10 +202,13 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	kern_task_generic_init(task, name);
 
 	task->kern_entry_point = entry_point;
-	task->kern_stack = kern_stack;
-	task->kern_stack_size = kern_stack_size;
-	task->user_stack = user_stack;
-	task->user_stack_size = user_stack_size;
+
+	kern_task_mem_set(task, TASK_MEM_ID_TEXT, (paddr_t) entry_point, 0, false);
+	kern_task_mem_set(task, TASK_MEM_ID_KERN_STACK, kern_stack, kern_stack_size,
+	    !! (task_flags & TASK_FLAGS_DYNAMIC_KSTACK));
+	kern_task_mem_set(task, TASK_MEM_ID_USER_STACK, user_stack, user_stack_size,
+	    !! (task_flags & TASK_FLAGS_DYNAMIC_USTACK));
+
 	task->is_user_task = 1;
 
 	task->task_flags = task_flags;
@@ -215,10 +221,10 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	 * Here our initial stack is our unprivileged stack.
 	 */
 	task->stack_top = platform_task_stack_setup(
-	    task->user_stack + user_stack_size,
+	    user_stack + user_stack_size,
 	    entry_point, arg, true);
 	/* And we program in our kernel stack for privileged code */
-	task->kern_stack_top = task->kern_stack + kern_stack_size;
+	task->kern_stack_top = kern_stack + kern_stack_size;
 
 	/* If required, setup the MPU for the user regions */
 	(void) kern_task_mem_setup_mpu(task);

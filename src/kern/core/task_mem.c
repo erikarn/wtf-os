@@ -25,6 +25,7 @@
 
 #include <kern/libraries/string/string.h>
 #include <kern/libraries/list/list.h>
+#include <kern/libraries/mem/mem.h>
 #include <kern/libraries/container/container.h>
 
 #include <kern/core/exception.h>
@@ -41,6 +42,40 @@
 
 LOGGING_DEFINE(LOG_TASKMEM, "task_mem", KERN_LOG_LEVEL_INFO);
 
+void
+kern_task_mem_init(struct kern_task *task)
+{
+	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
+	     "%s: task 0x%08x", __func__, task);
+
+	kern_bzero(&task->task_mem, sizeof(task->task_mem));
+}
+
+void
+kern_task_mem_set(struct kern_task *task, task_mem_id_t id,
+    paddr_t start, paddr_size_t size, bool is_dynamic)
+{
+	task->task_mem.task_mem_addr[id] = start;
+	task->task_mem.task_mem_size[id] = size;
+	if (is_dynamic) {
+		task->task_mem.dynamic_flags |= (1 << id);
+	} else {
+		task->task_mem.dynamic_flags &= ~(1 << id);
+	}
+}
+
+paddr_t
+kern_task_mem_get_start(struct kern_task *task, task_mem_id_t id)
+{
+	return task->task_mem.task_mem_addr[id];
+}
+
+paddr_size_t
+kern_task_mem_get_size(struct kern_task *task, task_mem_id_t id)
+{
+	return task->task_mem.task_mem_size[id];
+}
+
 /**
  * Free the memory allocations for the given task.
  *
@@ -53,32 +88,20 @@ LOGGING_DEFINE(LOG_TASKMEM, "task_mem", KERN_LOG_LEVEL_INFO);
 void
 kern_task_mem_cleanup(struct kern_task *task)
 {
+	paddr_t addr;
+	int i;
 
 	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
 	     "cleaning task 0x%08x", task);
 
-	if (task->task_flags & TASK_FLAGS_DYNAMIC_KSTACK) {
-		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
-		     "freeing stack (0x%x)!", task->kern_stack);
-		kern_physmem_free(task->kern_stack);
+	for (i = 0; i < TASK_MEM_ID_NUM; i++) {
+		if (task->task_mem.dynamic_flags & (1 << i)) {
+			addr = kern_task_mem_get_start(task, i);
+			KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
+			     "freeing id %d (0x%x)!", addr);
+			kern_physmem_free(addr);
+		}
 	}
-	if (task->task_flags & TASK_FLAGS_DYNAMIC_USTACK) {
-		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
-		     "freeing user stack (0x%x)!", task->user_stack);
-		kern_physmem_free(task->user_stack);
-	}
-
-	/* XXX TODO: optional user heap region */
-
-	/* XXX TODO: optional task executable memory */
-
-	/* XXX TODO: optional GOT */
-
-	/* XXX TODO: optional data */
-
-	/* XXX TODO: optional rodata */
-
-	/* XXX TODO: optional BSS */
 
 	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO, "finished!");
 }
@@ -97,6 +120,8 @@ kern_task_mem_cleanup(struct kern_task *task)
 bool
 kern_task_mem_setup_mpu(struct kern_task *task)
 {
+	paddr_t addr;
+	paddr_size_t size;
 
 	/* Initial table setup, no active regions */
 	platform_mpu_table_init(&task->mpu_phys_table[0]);
@@ -107,9 +132,10 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	    PLATFORM_PROT_TYPE_EXEC_RO);
 
 	/* User stack */
+	addr = kern_task_mem_get_start(task, TASK_MEM_ID_USER_STACK);
+	size = kern_task_mem_get_size(task, TASK_MEM_ID_USER_STACK);
 	platform_mpu_table_set(&task->mpu_phys_table[1],
-	    task->user_stack, task->user_stack_size,
-	    PLATFORM_PROT_TYPE_NOEXEC_RW);
+	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RW);
 
 	/* User heap */
 

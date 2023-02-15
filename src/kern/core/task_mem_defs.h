@@ -40,7 +40,7 @@
 typedef enum {
 
 	/* executable region */
-	TASK_MEM_ID_BSS = 0,
+	TASK_MEM_ID_TEXT = 0,
 
 	/* kernel stack */
 	TASK_MEM_ID_KERN_STACK = 1,
@@ -68,6 +68,8 @@ typedef enum {
 } task_mem_id_t;
 
 struct task_mem {
+	/* flags indicating if the regions are dynamic or static */
+	uint32_t dynamic_flags;
 	/* Physical address regions */
 	paddr_t task_mem_addr[TASK_MEM_ID_NUM];
 	paddr_size_t task_mem_size[TASK_MEM_ID_NUM];

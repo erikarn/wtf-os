@@ -24,13 +24,10 @@
 #include <kern/core/timer.h>
 
 #include <kern/core/task_defs.h>
+#include <kern/core/task_mem_defs.h>
 
 /*
  * This defines a single task.
- *
- * For now it's not in a collection; I'll worry about that once
- * I actually /have/ two tasks running (an idle task and some
- * running task.  Ok, maybe two running tasks.  We'll see.)
  */
 
 #define	KERN_TASK_NAME_SZ		16
@@ -79,11 +76,7 @@ struct kern_task {
 	/* Rest of this isn't used by the assembly routines */
 	char task_name[KERN_TASK_NAME_SZ];
 
-	stack_addr_t kern_stack;
-	int kern_stack_size;
-
-	stack_addr_t user_stack;
-	int user_stack_size;
+	struct task_mem task_mem;
 
 	bool is_user_task;
 
@@ -94,7 +87,6 @@ struct kern_task {
 
 	bool is_on_active_list;
 	bool is_on_dying_list;
-
 
 	kern_task_state_t cur_state;
 
