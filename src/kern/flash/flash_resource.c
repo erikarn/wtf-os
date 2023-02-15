@@ -80,8 +80,9 @@ flash_resource_check_pak(paddr_t start, struct flash_resource_pak *pak,
 	 */
 	kern_strlcpyn(label, s, labellen, pak->hdr.namelength);
 
-	console_printf("[console] pak: %s: %d byte payload, %d byte total length\n",
+	console_printf("[console] pak: %s@0x%x %d byte payload, %d byte total length\n",
 	    label,
+	    s,
 	    pak->hdr.payload_length,
 	    pak->hdr.length);
 
@@ -135,6 +136,7 @@ flash_resource_lookup(flash_resource_span_t *span,
 	char pak_label[16];
 
 	if ((span->flags & FLASH_RESOURCE_SPAN_FLAGS_SETUP) == 0) {
+		console_printf("%s: not setup\n", __func__);
 		return (false);
 	}
 
@@ -144,7 +146,7 @@ flash_resource_lookup(flash_resource_span_t *span,
 	while (flash_resource_check_pak(start, pak, pak_label,
 	    sizeof(pak_label))) {
 		/* XXX TODO: we REALLY need an internal non-crap string representation! */
-		if (kern_strncmp(pak_label, label, sizeof(pak_label)) == 0) {
+		if (kern_strncmp(pak_label, label, kern_strlen(label)) == 0) {
 			return (true);
 		}
 		start += pak->hdr.length;
