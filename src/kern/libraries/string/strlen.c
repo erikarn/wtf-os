@@ -15,8 +15,10 @@ kern_strlen(const char *str)
 	if (str == NULL)
 		return 0;
 
-	while (*str != '\0')
+	while (*str != '\0') {
+		str++;
 		len++;
+	}
 
 	return (len);
 }
