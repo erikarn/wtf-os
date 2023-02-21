@@ -126,10 +126,11 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	/* Initial table setup, no active regions */
 	platform_mpu_table_init(&task->mpu_phys_table[0]);
 
-	/* Executable region - all of XIP for now */
+	/* Executable region */
+	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_TEXT);
+	size = kern_task_mem_get_size(&task->task_mem, TASK_MEM_ID_TEXT);
 	platform_mpu_table_set(&task->mpu_phys_table[0],
-	    0x08000000, 0x200000,
-	    PLATFORM_PROT_TYPE_EXEC_RO);
+	    addr, size, PLATFORM_PROT_TYPE_EXEC_RO);
 
 	/* User stack */
 	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_USER_STACK);
