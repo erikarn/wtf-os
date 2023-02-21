@@ -149,3 +149,18 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 
 	return (true);
 }
+
+/*
+ * Transfer the given task mem allocations in 'dst' to the task mem in 'src'.
+ *
+ * This is intended for uses where you want to pass in a task_mem struct
+ * into a function and then have the caller's copy of it be zeroed out so
+ * we don't end up with two things trying to own the same memory allocations.
+ */
+void
+kern_task_mem_transfer(struct task_mem *dst, struct task_mem *src)
+{
+
+	kern_memcpy(dst, src, sizeof(struct task_mem));
+	kern_bzero(src, sizeof(struct task_mem));
+}
