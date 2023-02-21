@@ -25,12 +25,12 @@
 
 #include "kern/console/console.h"
 #include "kern/core/task.h"
+#include "kern/core/task_mem.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
 #include "kern/core/malloc.h"
 
 #include "core/platform.h"
-
 
 /*
  * I'm not yet sure how I return a value here; it's quite possible
@@ -77,6 +77,7 @@ setup_test_userland_task(void)
 {
 	paddr_t kern_stack, user_stack;
 	struct kern_task *test_user_task;
+	struct task_mem tm;
 
 	/* XXX TODO: check for retval=0 */
 	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
@@ -89,14 +90,19 @@ setup_test_userland_task(void)
 	 */
 	test_user_task = kern_malloc(512, 4);
 
+	kern_task_mem_init(&tm);
+	kern_task_mem_set(&tm, TASK_MEM_ID_TEXT,
+	    0x08000000, 0x200000, false);
+	kern_task_mem_set(&tm, TASK_MEM_ID_KERN_STACK,
+	    kern_stack, 512, true);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_STACK,
+	    user_stack, 512, true);
+
 	/* Create a user task with dynamically allocated RAM */
 	kern_task_user_init(test_user_task, kern_test_user_task, NULL,
 	    "user_task",
-	    (stack_addr_t) kern_stack,
-	    512,
-	    (stack_addr_t) user_stack,
-	    512,
-	    TASK_FLAGS_DYNAMIC_KSTACK | TASK_FLAGS_DYNAMIC_USTACK | TASK_FLAGS_DYNAMIC_STRUCT);
+	    &tm,
+	    TASK_FLAGS_DYNAMIC_STRUCT);
 
 	/* And start it */
 	kern_task_start(test_user_task);

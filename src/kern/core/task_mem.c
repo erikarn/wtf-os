@@ -43,37 +43,37 @@
 LOGGING_DEFINE(LOG_TASKMEM, "task_mem", KERN_LOG_LEVEL_INFO);
 
 void
-kern_task_mem_init(struct kern_task *task)
+kern_task_mem_init(struct task_mem *tm)
 {
 	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
-	     "%s: task 0x%08x", __func__, task);
+	     "%s: taskmem 0x%08x", __func__, tm);
 
-	kern_bzero(&task->task_mem, sizeof(task->task_mem));
+	kern_bzero(tm, sizeof(struct task_mem));
 }
 
 void
-kern_task_mem_set(struct kern_task *task, task_mem_id_t id,
+kern_task_mem_set(struct task_mem *tm, task_mem_id_t id,
     paddr_t start, paddr_size_t size, bool is_dynamic)
 {
-	task->task_mem.task_mem_addr[id] = start;
-	task->task_mem.task_mem_size[id] = size;
+	tm->task_mem_addr[id] = start;
+	tm->task_mem_size[id] = size;
 	if (is_dynamic) {
-		task->task_mem.dynamic_flags |= (1 << id);
+		tm->dynamic_flags |= (1 << id);
 	} else {
-		task->task_mem.dynamic_flags &= ~(1 << id);
+		tm->dynamic_flags &= ~(1 << id);
 	}
 }
 
 paddr_t
-kern_task_mem_get_start(struct kern_task *task, task_mem_id_t id)
+kern_task_mem_get_start(struct task_mem *tm, task_mem_id_t id)
 {
-	return task->task_mem.task_mem_addr[id];
+	return tm->task_mem_addr[id];
 }
 
 paddr_size_t
-kern_task_mem_get_size(struct kern_task *task, task_mem_id_t id)
+kern_task_mem_get_size(struct task_mem *tm, task_mem_id_t id)
 {
-	return task->task_mem.task_mem_size[id];
+	return tm->task_mem_size[id];
 }
 
 /**
@@ -86,17 +86,17 @@ kern_task_mem_get_size(struct kern_task *task, task_mem_id_t id)
  * regions that must be freeable via the physmem API.
  */
 void
-kern_task_mem_cleanup(struct kern_task *task)
+kern_task_mem_cleanup(struct task_mem *tm)
 {
 	paddr_t addr;
 	int i;
 
 	KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
-	     "cleaning task 0x%08x", task);
+	     "cleaning tm 0x%08x", tm);
 
 	for (i = 0; i < TASK_MEM_ID_NUM; i++) {
-		if (task->task_mem.dynamic_flags & (1 << i)) {
-			addr = kern_task_mem_get_start(task, i);
+		if (tm->dynamic_flags & (1 << i)) {
+			addr = kern_task_mem_get_start(tm, i);
 			KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_INFO,
 			     "freeing id %d (0x%x)!", addr);
 			kern_physmem_free(addr);
@@ -132,8 +132,8 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	    PLATFORM_PROT_TYPE_EXEC_RO);
 
 	/* User stack */
-	addr = kern_task_mem_get_start(task, TASK_MEM_ID_USER_STACK);
-	size = kern_task_mem_get_size(task, TASK_MEM_ID_USER_STACK);
+	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_USER_STACK);
+	size = kern_task_mem_get_size(&task->task_mem, TASK_MEM_ID_USER_STACK);
 	platform_mpu_table_set(&task->mpu_phys_table[1],
 	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RW);
 

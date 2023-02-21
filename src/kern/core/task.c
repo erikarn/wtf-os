@@ -158,12 +158,14 @@ kern_task_init(struct kern_task *task, void *entry_point,
 
 	kern_task_generic_init(task, name);
 
-	kern_task_mem_init(task);
+	kern_task_mem_init(&task->task_mem);
 
 	task->kern_entry_point = entry_point;
 
-	kern_task_mem_set(task, TASK_MEM_ID_TEXT, (paddr_t) entry_point, 0, false);
-	kern_task_mem_set(task, TASK_MEM_ID_KERN_STACK, kern_stack, kern_stack_size,
+	kern_task_mem_set(&task->task_mem, TASK_MEM_ID_TEXT,
+	    (paddr_t) entry_point, 0, false);
+	kern_task_mem_set(&task->task_mem, TASK_MEM_ID_KERN_STACK,
+	    kern_stack, kern_stack_size,
 	    !! (task_flags & TASK_FLAGS_DYNAMIC_KSTACK));
 
 	task->is_user_task = 0;
@@ -194,20 +196,39 @@ kern_task_init(struct kern_task *task, void *entry_point,
  */
 void
 kern_task_user_init(struct kern_task *task, void *entry_point,
-    void *arg, const char *name, stack_addr_t kern_stack,
-    int kern_stack_size, stack_addr_t user_stack, int user_stack_size,
+    void *arg, const char *name, struct task_mem *task_mem,
     uint32_t task_flags)
 {
+	paddr_t kern_stack, user_stack;
+	paddr_size_t kern_stack_size, user_stack_size;
 
 	kern_task_generic_init(task, name);
 
 	task->kern_entry_point = entry_point;
 
+	/*
+	 * Transfer ownership of the memory to us.  At this point if we fail
+	 * to set things up it's .. well, our problem to free it.
+	 */
+	kern_task_mem_transfer(&task->task_mem, task_mem);
+
+#if 0
 	kern_task_mem_set(task, TASK_MEM_ID_TEXT, (paddr_t) entry_point, 0, false);
 	kern_task_mem_set(task, TASK_MEM_ID_KERN_STACK, kern_stack, kern_stack_size,
 	    !! (task_flags & TASK_FLAGS_DYNAMIC_KSTACK));
 	kern_task_mem_set(task, TASK_MEM_ID_USER_STACK, user_stack, user_stack_size,
 	    !! (task_flags & TASK_FLAGS_DYNAMIC_USTACK));
+#endif
+
+	kern_stack = kern_task_mem_get_start(&task->task_mem,
+	    TASK_MEM_ID_KERN_STACK);
+	kern_stack_size = kern_task_mem_get_size(&task->task_mem,
+	    TASK_MEM_ID_KERN_STACK);
+
+	user_stack = kern_task_mem_get_start(&task->task_mem,
+	    TASK_MEM_ID_USER_STACK);
+	user_stack_size = kern_task_mem_get_size(&task->task_mem,
+	    TASK_MEM_ID_USER_STACK);
 
 	task->is_user_task = 1;
 
@@ -349,7 +370,7 @@ kern_task_cleanup(struct kern_task *task)
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
 
 	/* Clean up memory regions where required */
-	kern_task_mem_cleanup(task);
+	kern_task_mem_cleanup(&task->task_mem);
 
 	/* Free task struct memory if allocated */
 	if (task->task_flags & TASK_FLAGS_DYNAMIC_STRUCT) {

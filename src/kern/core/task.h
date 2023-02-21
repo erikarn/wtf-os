@@ -130,10 +130,9 @@ extern	struct kern_task * current_task;
 extern	void kern_task_init(struct kern_task *task, void *entry_point,
 	    const char *name, stack_addr_t kern_stack, int kern_stack_size,
 	    uint32_t task_flags);
+
 extern	void kern_task_user_init(struct kern_task *task, void *entry_point,
-	    void *arg, const char *name,
-	    stack_addr_t kern_stack, int kern_stack_size,
-	    stack_addr_t user_stack, int user_stack_size,
+	    void *arg, const char *name, struct task_mem *task_mem,
 	    uint32_t task_flags);
 
 extern	void kern_task_setup(void);

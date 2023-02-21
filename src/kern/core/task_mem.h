@@ -27,14 +27,14 @@
 
 struct kern_task;
 
-extern	void kern_task_mem_init(struct kern_task *task);
-extern	void kern_task_mem_set(struct kern_task *task, task_mem_id_t id,
+extern	void kern_task_mem_init(struct task_mem *tm);
+extern	void kern_task_mem_set(struct task_mem *tm, task_mem_id_t id,
 	    paddr_t start, paddr_size_t size, bool is_dynamic);
-extern	paddr_t kern_task_mem_get_start(struct kern_task *task,
+extern	paddr_t kern_task_mem_get_start(struct task_mem *tm,
 	     task_mem_id_t id);
-extern	paddr_size_t kern_task_mem_get_size(struct kern_task *task,
+extern	paddr_size_t kern_task_mem_get_size(struct task_mem *tm,
 	     task_mem_id_t id);
-extern	void kern_task_mem_cleanup(struct kern_task *task);
+extern	void kern_task_mem_cleanup(struct task_mem *tm);
 extern	bool kern_task_mem_setup_mpu(struct kern_task *task);
 
 extern	void kern_task_mem_transfer(struct task_mem *dst, struct task_mem *src);
