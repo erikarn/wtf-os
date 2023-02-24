@@ -218,12 +218,15 @@ kern_physmem_alloc(size_t size, uint32_t alignment, uint32_t flags)
 	    "[alloc] called, size=%d alignment=%d flags=0x%08x",
 	    (int) size, alignment, flags);
 
+#if 0
 	/*
 	 * Ensure we're not being asked for tiny allocations.
 	 * Those should use a zone allocator API.
 	 */
-	if (size < KERN_PHYSMEM_MINIMUM_ALLOCATION_SIZE)
+	if (size < KERN_PHYSMEM_MINIMUM_ALLOCATION_SIZE) {
 		return (0);
+	}
+#endif
 
 	platform_spinlock_lock(&kern_physmem_spinlock);
 
