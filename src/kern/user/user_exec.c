@@ -63,6 +63,7 @@ user_exec_program_parse_header(paddr_t addr, size_t size,
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->got_offset = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->got_size = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->bss_offset = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->bss_size = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->data_offset = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->data_size = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->rodata_offset = val; s = s + sizeof(uint32_t);
