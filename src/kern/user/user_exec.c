@@ -60,6 +60,10 @@ user_exec_program_parse_header(paddr_t addr, size_t size,
 	/* XXX TODO: yeah, need a generated parser here, le sigh */
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->text_offset = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->text_size = val; s = s + sizeof(uint32_t);
+
+	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->start_offset = val; s = s + sizeof(uint32_t);
+	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->start_size = val; s = s + sizeof(uint32_t);
+
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->got_offset = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->got_size = val; s = s + sizeof(uint32_t);
 	kern_memcpy(&val, (const char *) s, sizeof(uint32_t)); hdr->bss_offset = val; s = s + sizeof(uint32_t);

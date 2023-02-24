@@ -50,6 +50,8 @@
 struct user_exec_program_header {
 	uint32_t text_offset;
 	uint32_t text_size;
+	uint32_t start_offset;
+	uint32_t start_size;
 	uint32_t got_offset;
 	uint32_t got_size;
 	uint32_t bss_offset;
@@ -66,6 +68,7 @@ struct user_exec_program_header {
 /* Note: is paddr_t the correct address type to use here? */
 struct user_exec_program_addrs {
 	paddr_t text_addr;
+	paddr_t start_addr;
 	paddr_t got_addr;
 	paddr_t bss_addr;
 	paddr_t data_addr;
