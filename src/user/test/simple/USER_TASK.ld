@@ -24,6 +24,9 @@ SECTIONS
     LONG(LOADADDR(.text));
     LONG(  SIZEOF(.text));
 
+    LONG(_start);
+    LONG(4);
+
     LONG(LOADADDR(.got));
     LONG(  SIZEOF(.got));
 
