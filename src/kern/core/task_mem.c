@@ -123,6 +123,10 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	paddr_t addr;
 	paddr_size_t size;
 
+	if ((task->task_flags & TASK_FLAGS_ENABLE_MPU) == 0) {
+		return true;
+	}
+
 	/* Initial table setup, no active regions */
 	platform_mpu_table_init(&task->mpu_phys_table[0]);
 
