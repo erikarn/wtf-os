@@ -36,6 +36,7 @@
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
+#include "kern/core/task_mem.h"
 #include "kern/user/user_exec.h"
 
 /* flash resource */
@@ -57,6 +58,8 @@ void
 test_userload(void)
 {
     struct flash_resource_pak pak;
+    struct task_mem tm;
+    paddr_t kern_stack;
 
     /* Ok, let's try loading TEST.BIN */
     /*
@@ -113,14 +116,42 @@ test_userload(void)
          * only one free for hardware access.
          */
 
-#if 0
-        /*
-         * Parse / update relocation entries and other segment offset stuff.
-         */
-        if (user_exec_program_setup_segments(pak.payload_start, pak.payload_size,
-          &hdr, &addrs) == false) {
+	/* Allocate RAM - not MPU aligned for now */
+
+	kern_task_mem_init(&tm);
+
+	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+
+	/* XIP */
+	addrs.text_addr = pak.payload_start + hdr.text_offset;
+	addrs.got_addr = kern_physmem_alloc(hdr.got_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs.bss_addr = kern_physmem_alloc(hdr.bss_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs.data_addr = kern_physmem_alloc(hdr.data_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	/* XIP */
+	addrs.rodata_addr = pak.payload_start + hdr.rodata_offset;
+	addrs.heap_addr = kern_physmem_alloc(hdr.heap_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs.stack_addr = kern_physmem_alloc(hdr.stack_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+
+	/* XIP */
+	kern_task_mem_set(&tm, TASK_MEM_ID_TEXT, 0x08000000, 0x200000, false);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_GOT, addrs.got_addr, hdr.got_size, true);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_BSS, addrs.bss_addr, hdr.bss_size, true);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_DATA, addrs.data_addr, hdr.data_size, true);
+	/* XIP */
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_RODATA, addrs.rodata_addr, hdr.rodata_size, false);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_HEAP, addrs.heap_addr, hdr.heap_size, true);
+	kern_task_mem_set(&tm, TASK_MEM_ID_USER_STACK, addrs.stack_addr, hdr.stack_size, true);
+	kern_task_mem_set(&tm, TASK_MEM_ID_KERN_STACK, kern_stack, 512, true);
+
+	/*
+	 * Parse / update relocation entries and other segment offset stuff.
+	 */
+	if (user_exec_program_setup_segments(pak.payload_start, pak.payload_size,
+	    &hdr, &addrs) == false) {
+		console_printf("[userload] failed to setup segments\n");
+		return;
+
         }
-#endif
         /*
          * Here we have the parsed out segments, allocated memory and now
          * populated them with the relevant contents.
