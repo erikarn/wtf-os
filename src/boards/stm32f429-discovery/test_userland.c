@@ -100,8 +100,8 @@ setup_test_userland_task(void)
 
 	/* XXX TODO: verify the allocated memory will work with the MPU */
 
-	/* Create a user task with dynamically allocated RAM */
-	kern_task_user_init(test_user_task, kern_test_user_task, NULL,
+	/* Create a user task with dynamically allocated RAM, no r9 */
+	kern_task_user_init(test_user_task, kern_test_user_task, NULL, 0,
 	    "user_task",
 	    &tm,
 	    TASK_FLAGS_DYNAMIC_STRUCT | TASK_FLAGS_ENABLE_MPU);

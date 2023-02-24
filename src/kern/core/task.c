@@ -152,9 +152,11 @@ kern_task_generic_init_finish(struct kern_task *task)
  */
 void
 kern_task_init(struct kern_task *task, void *entry_point,
-    const char *name, stack_addr_t kern_stack, int kern_stack_size,
-    uint32_t task_flags)
+    void *arg, const char *name, stack_addr_t kern_stack,
+    int kern_stack_size, uint32_t task_flags)
 {
+
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[kern] kern task created 0x%08x", task);
 
 	kern_task_generic_init(task, name);
 
@@ -179,7 +181,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    kern_stack + kern_stack_size,
-	    entry_point, NULL, false);
+	    entry_point, arg, 0, false);
 	/* kern_stack_top isn't used for kernel tasks */
 	task->kern_stack_top = 0;
 
@@ -196,11 +198,13 @@ kern_task_init(struct kern_task *task, void *entry_point,
  */
 void
 kern_task_user_init(struct kern_task *task, void *entry_point,
-    void *arg, const char *name, struct task_mem *task_mem,
+    void *arg, uint32_t r9, const char *name, struct task_mem *task_mem,
     uint32_t task_flags)
 {
 	paddr_t kern_stack, user_stack;
 	paddr_size_t kern_stack_size, user_stack_size;
+
+	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "[kern] user task created 0x%08x, entry 0x%x, r9=0x%x", task, entry_point, r9);
 
 	kern_task_generic_init(task, name);
 
@@ -243,7 +247,7 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    user_stack + user_stack_size,
-	    entry_point, arg, true);
+	    entry_point, arg, r9, true);
 	/* And we program in our kernel stack for privileged code */
 	task->kern_stack_top = kern_stack + kern_stack_size;
 
@@ -638,12 +642,12 @@ kern_task_setup(void)
 	active_task_count = 0;
 
 	/* Idle task will be magically made ready to run */
-	kern_task_init(&idle_task, kern_idle_task_fn, "kidle",
+	kern_task_init(&idle_task, kern_idle_task_fn, NULL, "kidle",
 	    (stack_addr_t) kern_idle_stack, sizeof(kern_idle_stack),
 	    0);
 
 	/* Test task will be made ready to run as well */
-	kern_task_init(&test_task, kern_test_task_fn, "ktest",
+	kern_task_init(&test_task, kern_test_task_fn, NULL, "ktest",
 	    (stack_addr_t) kern_test_stack, sizeof(kern_test_stack),
 	    0);
 

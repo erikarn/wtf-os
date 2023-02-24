@@ -184,7 +184,7 @@ platform_task_exit(void)
 
 stack_addr_t
 platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
-    bool is_user)
+    uint32_t r9, bool is_user)
 {
 	stack_addr_t *ps = (void *) (uintptr_t) stack;
 
@@ -199,7 +199,18 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
 	*ps = ((kern_code_exec_addr_t) entry_point); // r0
 	ps--;
 	*ps = MODE_THREAD_PSP;		// INITIAL EXC_RETURN
-	ps -= 9;	/* skip r11, r10, r9, r8, r7, r6, r5, r4 */
+	ps--;
+
+	/*
+	 * Correct initialisation of r9 is required for
+	 * PIC userland code.
+	 */
+	ps -= 2;	/* skip r11, r10 */
+
+	*ps = r9;
+	ps--;
+
+	ps -= 5;	/* skip r8, r7, r6, r5, r4 */
 
 	if (is_user) {
 		*ps = 0x03; // CONTROL, unpriv

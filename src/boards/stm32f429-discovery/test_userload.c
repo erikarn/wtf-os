@@ -36,6 +36,7 @@
 #include "kern/core/task.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
+#include "kern/core/malloc.h"
 #include "kern/core/task_mem.h"
 #include "kern/user/user_exec.h"
 
@@ -60,6 +61,7 @@ test_userload(void)
     struct flash_resource_pak pak;
     struct task_mem tm;
     paddr_t kern_stack;
+    struct kern_task *task;
 
     /* Ok, let's try loading TEST.BIN */
     /*
@@ -88,9 +90,11 @@ test_userload(void)
          * (Although right now we're not copying text or rodata, as we're
          * expecting them to be in flash.)
          */
+	console_printf("[prog] payload_start=0x%x, len %d bytes\n", pak.payload_start, pak.payload_size);
 
         /* TEXT if needed, else just point to flash offset - ro, exec */
 	console_printf("[prog] text = 0x%x, %d bytes\n", hdr.text_offset, hdr.text_size);
+	console_printf("[prog] start = 0x%x\n", hdr.start_offset);
 
         /* GOT - noexec, ro */
 	console_printf("[prog] got = 0x%x, %d bytes\n", hdr.got_offset, hdr.got_size);
@@ -124,6 +128,8 @@ test_userload(void)
 
 	/* XIP */
 	addrs.text_addr = pak.payload_start + hdr.text_offset;
+	addrs.start_addr = pak.payload_start + hdr.start_offset;
+
 	addrs.got_addr = kern_physmem_alloc(hdr.got_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	addrs.bss_addr = kern_physmem_alloc(hdr.bss_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	addrs.data_addr = kern_physmem_alloc(hdr.data_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
@@ -152,13 +158,22 @@ test_userload(void)
 		return;
 
         }
-        /*
-         * Here we have the parsed out segments, allocated memory and now
-         * populated them with the relevant contents.
-         *
-         * In theory we can now setup the task, setup r9 with the right GOT base
-         * value, and start execution!
-         */
+#if 1
+	/*
+	 * Here we have the parsed out segments, allocated memory and now
+	 * populated them with the relevant contents.
+	 *
+	 * In theory we can now setup the task, setup r9 with the right GOT base
+	 * value, and start execution!
+	 */
+	task = kern_malloc(sizeof(struct kern_task), 4);
+        kern_task_user_init(task, addrs.start_addr, NULL, addrs.got_addr,
+            "TEST.BIN",
+            &tm,
+            TASK_FLAGS_DYNAMIC_STRUCT); // | TASK_FLAGS_ENABLE_MPU);
 
+        /* And start it */
+        kern_task_start(task);
+#endif
     }
 }

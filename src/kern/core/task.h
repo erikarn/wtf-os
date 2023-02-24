@@ -128,11 +128,11 @@ extern	struct kern_task * current_task;
  * via kern_physmem_alloc() so it can be appropriately freed.
  */
 extern	void kern_task_init(struct kern_task *task, void *entry_point,
-	    const char *name, stack_addr_t kern_stack, int kern_stack_size,
-	    uint32_t task_flags);
+	    void *arg, const char *name, stack_addr_t kern_stack,
+	    int kern_stack_size, uint32_t task_flags);
 
 extern	void kern_task_user_init(struct kern_task *task, void *entry_point,
-	    void *arg, const char *name, struct task_mem *task_mem,
+	    void *arg, uint32_t r9, const char *name, struct task_mem *task_mem,
 	    uint32_t task_flags);
 
 extern	void kern_task_setup(void);
