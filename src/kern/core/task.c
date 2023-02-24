@@ -351,8 +351,10 @@ skip:
 	kern_timer_taskcount(active_task_count);
 
 	/* Program in the MPU table - context switch will re-enable */
-	/* XXX TODO: we're not obeying the MPU task flag yet? */
-	platform_mpu_table_program(&current_task->mpu_phys_table[0]);
+	if (current_task->task_flags & TASK_FLAGS_ENABLE_MPU) {
+		platform_mpu_table_program(&current_task->mpu_phys_table[0]);
+		platform_mpu_enable();
+	}
 }
 
 /**

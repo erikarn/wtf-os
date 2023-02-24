@@ -58,8 +58,8 @@ arm_m4_task_switch:
 	isb
 	bl kern_task_select
 
-	/* XXX TODO: MPU? Or leave it up to kern_task_select? */
-	bl arm_m4_mpu_enable
+	/* XXX TODO: MPU? Right now kern_task_select will re-enable if needed */
+	/* bl arm_m4_mpu_enable */
 	dsb
 	isb
 
