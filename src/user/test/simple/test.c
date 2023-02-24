@@ -41,8 +41,8 @@ void
 _start(void)
 {
 //	uint32_t count = 0;
-	const char *teststr_1 = "test string 1!\r\n";
-	const char *teststr_2 = "test string 2!\r\n";
+	const char *teststr_1 = "test string 3!\r\n";
+	const char *teststr_2 = "test string 4!\r\n";
 
 	while (1) {
 #if 0
