@@ -51,7 +51,7 @@
 #include "core/arm_m4_nvic.h"
 #include "core/arm_m4_mpu.h"
 
-static flash_resource_span_t flash_span;
+flash_resource_span_t flash_span;
 
 extern uint32_t _estack, _ebss;
 extern uint32_t _flash_resource_start;
@@ -60,10 +60,12 @@ extern uint32_t _flash_resource_start;
 #define	ESTACK_MSP_SIZE		1024
 
 extern void setup_test_userland_task(void);
+extern void test_userload(void);
 
 /* XXX */
 extern void arm_m4_task_switch();
 extern void arm_m4_svc_handler();
+
 
 static void
 cons_putc(char c)
@@ -219,8 +221,6 @@ SVC_Handler(void)
 int
 main(void)
 {
-    struct flash_resource_pak pak;
-
     /* Setup initial hardware before we setup console, echo etc */
 
     setup_led_gpios();
@@ -329,87 +329,15 @@ main(void)
     setup_test_userland_task();
 
     /* Ok, let's try loading TEST.BIN */
-    /*
-     * XXX TODO: for now, we aren't going to implement MPU support.
-     * Once this actually works, we can figure out how to populate the
-     * segments in a non-terrible way, and also figure out how to track
-     * all of these memory allocations in the user task struct.
-     */
-    if (flash_resource_lookup(&flash_span, &pak, "TEST.BIN")) {
-        struct user_exec_program_header hdr = { 0 };
-        struct user_exec_program_addrs addrs = { 0 };
+    test_userload();
 
-        console_printf("[wtfos] Found TEST.BIN!\n");
 
-        if (user_exec_program_parse_header(pak.payload_start, pak.payload_size,
-          &hdr) == false) {
-             console_printf("[wtfos] failed to parse program header\n");
-             goto skip;
-        }
-        console_printf("[wtfos] parsed program header\n");
-
-        /*
-         * Header is now parsed out, time to allocate memory for our regions.
-         * The copying / populating is done by user_exec_program_setup_segments()
-         *
-         * (Although right now we're not copying text or rodata, as we're
-         * expecting them to be in flash.)
-         */
-
-        /* TEXT if needed, else just point to flash offset - ro, exec */
-	console_printf("[prog] text = 0x%x, %d bytes\n", hdr.text_offset, hdr.text_size);
-
-        /* GOT - noexec, ro */
-	console_printf("[prog] got = 0x%x, %d bytes\n", hdr.got_offset, hdr.got_size);
-
-        /* BSS - noexec, rw */
-	console_printf("[prog] bss = 0x%x, %d bytes\n", hdr.bss_offset, hdr.bss_size);
-
-        /* DATA - noexec, rw */
-	console_printf("[prog] data = 0x%x, %d bytes\n", hdr.data_offset, hdr.data_size);
-
-        /* RODATA if needed, else just point to flash offset - ro, noexec */
-	console_printf("[prog] rodata = 0x%x, %d bytes\n", hdr.rodata_offset, hdr.rodata_size);
-
-        /* HEAP - noexec, rw */
-	console_printf("[prog] heap = %d bytes\n", hdr.heap_size);
-
-        /* STACK - noexec, rw */
-	console_printf("[prog] stack = %d bytes\n", hdr.stack_size);
-
-        /*
-         * TODO: which segments can we coalesce together to take up less MPU
-         * slots?  The STM32F4 only has 8 MPU slots, so we'd end up with
-         * only one free for hardware access.
-         */
-
-#if 0
-        /*
-         * Parse / update relocation entries and other segment offset stuff.
-         */
-        if (user_exec_program_setup_segments(pak.payload_start, pak.payload_size,
-          &hdr, &addrs) == false) {
-        }
-#endif
-        /*
-         * Here we have the parsed out segments, allocated memory and now
-         * populated them with the relevant contents.
-         *
-         * In theory we can now setup the task, setup r9 with the right GOT base
-         * value, and start execution!
-         */
-
-    }
 
     /* Ready to start context switching */
     kern_task_ready();
 
     /* Kick start context switching */
     kern_task_tick();
-
-
-skip:
-
 
     // Now idle, we should either not get here, or not stay here long
     while (1) {

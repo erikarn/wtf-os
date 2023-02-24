@@ -95,6 +95,7 @@ SRCS += $(KERN_SUBDIR)/user/user_exec.c
 # The board initialisation routine
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userland.c
+SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userload.c
 
 # Don't modify below here
 
