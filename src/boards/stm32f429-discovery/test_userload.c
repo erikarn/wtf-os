@@ -124,7 +124,9 @@ test_userload(void)
 
 	kern_task_mem_init(&tm);
 
-	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	kern_stack = kern_physmem_alloc(PLATFORM_DEFAULT_KERN_STACK_SIZE,
+	    PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT,
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 
 	/* XIP */
 	addrs.text_addr = pak.payload_start + hdr.text_offset;

@@ -57,11 +57,15 @@ LOGGING_DEFINE(LOG_TASK, "task", KERN_LOG_LEVEL_INFO);
  * Idle task
  */
 static struct kern_task idle_task;
-static uint8_t kern_idle_stack[256] __attribute__ ((aligned(8))) = { 0 };
+static uint8_t kern_idle_stack[256]
+	    __attribute__ ((aligned(PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT)))
+	     = { 0 };
 
 static struct kern_task test_task;
 /* Note: 512 bytes; we need extra for the actual work we do! */
-static uint8_t kern_test_stack[512] __attribute__ ((aligned(8))) = { 0 };
+static uint8_t kern_test_stack[PLATFORM_DEFAULT_KERN_STACK_SIZE]
+	    __attribute__ ((aligned(PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT)))
+	     = { 0 };
 
 static void _kern_task_set_state_locked(struct kern_task *task,
     kern_task_state_t new_state);

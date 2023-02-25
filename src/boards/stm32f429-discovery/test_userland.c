@@ -80,21 +80,20 @@ setup_test_userland_task(void)
 	struct task_mem tm;
 
 	/* XXX TODO: check for retval=0 */
-	kern_stack = kern_physmem_alloc(512, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	kern_stack = kern_physmem_alloc(PLATFORM_DEFAULT_KERN_STACK_SIZE,
+	    PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT,
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+
 	/* XXX why yes we need this alignment for the MPU! */
 	user_stack = kern_physmem_alloc(512, 512, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 
-	/*
-	 * XXX TODO: this is 512 instead of sizeof() because of limits
-	 * of the current physmem allocator.
-	 */
-	test_user_task = kern_malloc(512, 4);
+	test_user_task = kern_malloc(sizeof(struct kern_task), 4);
 
 	kern_task_mem_init(&tm);
 	kern_task_mem_set(&tm, TASK_MEM_ID_TEXT,
 	    0x08000000, 0x200000, false);
 	kern_task_mem_set(&tm, TASK_MEM_ID_KERN_STACK,
-	    kern_stack, 512, true);
+	    kern_stack, PLATFORM_DEFAULT_KERN_STACK_SIZE, true);
 	kern_task_mem_set(&tm, TASK_MEM_ID_USER_STACK,
 	    user_stack, 512, true);
 
