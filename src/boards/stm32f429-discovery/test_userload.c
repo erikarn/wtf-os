@@ -38,6 +38,7 @@
 #include "kern/core/physmem.h"
 #include "kern/core/malloc.h"
 #include "kern/core/task_mem.h"
+#include "kern/core/task_mem_alloc.h"
 #include "kern/user/user_exec.h"
 
 /* flash resource */
@@ -60,15 +61,31 @@ test_userload(void)
 {
     struct flash_resource_pak pak;
     struct task_mem tm;
-    paddr_t kern_stack;
     struct kern_task *task;
 
     /* Ok, let's try loading TEST.BIN */
+
     /*
      * XXX TODO: for now, we aren't going to implement MPU support.
      * Once this actually works, we can figure out how to populate the
      * segments in a non-terrible way, and also figure out how to track
      * all of these memory allocations in the user task struct.
+     *
+     * Also note the trickiest part is the XIP rodata and text segments -
+     * we CAN cheat by simply making a read + execute entry for all of
+     * flash, but to do it /better/ we would need to lay things out in
+     * flash so the physical address ranges in said flash match the
+     * alignment requirements.
+     *
+     * .. which I guarantee is going to be a complete nightmare to make
+     * work, so let's just ignore text/rodata for now and get everything
+     * else working.
+     *
+     * (I haven't even begun to think about how we'd implement shared
+     * library execution given MPU setup, as shared library code
+     * would be /elsewhere/ in flash, not contiguous with what
+     * we're running in the user task!  Getting the MPU right for
+     * that will be hilarious!)
      */
     if (flash_resource_lookup(&flash_span, &pak, "TEST.BIN")) {
         struct user_exec_program_header hdr = { 0 };
@@ -85,6 +102,7 @@ test_userload(void)
 
         /*
          * Header is now parsed out, time to allocate memory for our regions.
+         * Allocating RAM is done by platform_user_task_mem_allocate().
          * The copying / populating is done by user_exec_program_setup_segments()
          *
          * (Although right now we're not copying text or rodata, as we're
@@ -120,36 +138,25 @@ test_userload(void)
          * only one free for hardware access.
          */
 
-	/* Allocate RAM - not MPU aligned for now */
-
 	kern_task_mem_init(&tm);
 
-	kern_stack = kern_physmem_alloc(PLATFORM_DEFAULT_KERN_STACK_SIZE,
-	    PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT,
-	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	/* Allocate RAM - not MPU aligned for now */
+	if (platform_user_task_mem_allocate(&hdr, &addrs, &tm, false) == false) {
+		console_printf("[prog] failed to allocate task mem\n");
+		kern_task_mem_cleanup(&tm);
+		return;
+	}
 
 	/* XIP */
+	/*
+	 * These are done after platform_user_task_mem_allocate() as right now
+	 * it will kern_bzero() the addrs memory first, but not set these up for
+	 * us.  Eventually we'll want to have flags about whether we need
+	 * RAM allocated for text/rodata.
+	 */
 	addrs.text_addr = pak.payload_start + hdr.text_offset;
 	addrs.start_addr = pak.payload_start + hdr.start_offset;
-
-	addrs.got_addr = kern_physmem_alloc(hdr.got_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-	addrs.bss_addr = kern_physmem_alloc(hdr.bss_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-	addrs.data_addr = kern_physmem_alloc(hdr.data_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-	/* XIP */
 	addrs.rodata_addr = pak.payload_start + hdr.rodata_offset;
-	addrs.heap_addr = kern_physmem_alloc(hdr.heap_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-	addrs.stack_addr = kern_physmem_alloc(hdr.stack_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
-
-	/* XIP */
-	kern_task_mem_set(&tm, TASK_MEM_ID_TEXT, 0x08000000, 0x200000, false);
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_GOT, addrs.got_addr, hdr.got_size, true);
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_BSS, addrs.bss_addr, hdr.bss_size, true);
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_DATA, addrs.data_addr, hdr.data_size, true);
-	/* XIP */
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_RODATA, addrs.rodata_addr, hdr.rodata_size, false);
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_HEAP, addrs.heap_addr, hdr.heap_size, true);
-	kern_task_mem_set(&tm, TASK_MEM_ID_USER_STACK, addrs.stack_addr, hdr.stack_size, true);
-	kern_task_mem_set(&tm, TASK_MEM_ID_KERN_STACK, kern_stack, 512, true);
 
 	/*
 	 * Parse / update relocation entries and other segment offset stuff.
@@ -157,9 +164,15 @@ test_userload(void)
 	if (user_exec_program_setup_segments(pak.payload_start, pak.payload_size,
 	    &hdr, &addrs) == false) {
 		console_printf("[userload] failed to setup segments\n");
+		kern_task_mem_cleanup(&tm);
 		return;
-
         }
+
+	/*
+	 * Here's where we would verify that the task mem matches
+	 * MPU requirements and error out if we expect it to validate.
+	 */
+
 #if 1
 	/*
 	 * Here we have the parsed out segments, allocated memory and now

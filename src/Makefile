@@ -40,6 +40,7 @@ C_FLAGS += -DHSE_VALUE=8000000 -DPLL_M=8
 C_FLAGS += -I$(BSP_SUBDIR)/local
 C_FLAGS += -I$(BSP_SUBDIR)/local/arm-m4-32
 
+# Platform/hardware drivers and startup code.
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_flash.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_usart.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_startup.c
@@ -50,7 +51,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_syscfg.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_exti.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
-# Testing for now; I haven't implemented a RAM VTOR yet.
+# Architecture BSP - in this case, ARM Cortex-M4.
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_vtor_ram.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_exception.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_platform.c
@@ -61,11 +62,14 @@ SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_mpu.c
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_switch.S
 SRCS += $(BSP_SUBDIR)/local/arm-m4-32/core/arm_m4_svc.S
 
+# BSP kernel routines - task memory, creation, MPU, etc.
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/kern/task_mem.c
+SRCS += $(BSP_SUBDIR)/local/arm-m4-32/kern/task_mem_alloc.c
+
 # And the beginning of some kernel routines!
 SRCS += $(KERN_SUBDIR)/console/console.c
 SRCS += $(KERN_SUBDIR)/core/exception.c
 SRCS += $(KERN_SUBDIR)/core/task.c
-SRCS += $(KERN_SUBDIR)/core/task_mem.c
 SRCS += $(KERN_SUBDIR)/core/timer.c
 SRCS += $(KERN_SUBDIR)/core/physmem.c
 SRCS += $(KERN_SUBDIR)/core/logging.c
@@ -134,4 +138,4 @@ flash: wtfos
 
 clean:
 	rm -f $(C_OBJS) $(S_OBJS) $(SS_OBJS)
-	rm -f wtfos.elf wtfos.bin
+	rm -f wtfos.elf wtfos.bin wtfos.img test.pak
