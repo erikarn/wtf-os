@@ -33,6 +33,8 @@ extern	void platform_timer_disable(void);
 extern	void platform_mpu_enable(void);
 extern	void platform_mpu_disable(void);
 extern	void platform_mpu_table_init(platform_mpu_phys_entry_t *table);
+extern	bool platform_mpu_table_entry_validate(uint32_t base_addr,
+	     uint32_t size, platform_prot_type_t prot);
 extern	bool platform_mpu_table_set(platform_mpu_phys_entry_t *table,
 	    uint32_t addr, uint32_t size, platform_prot_type_t prot_type);
 extern	void platform_mpu_table_program(const platform_mpu_phys_entry_t *table);

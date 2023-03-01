@@ -102,6 +102,16 @@ platform_user_task_mem_allocate(const struct user_exec_program_header *hdr,
 	addrs.rodata_addr = pak.payload_start + hdr.rodata_offset;
 #endif
 
+	/*
+	 * Note: for MPU, minimium size here is 32 bytes.
+	 * So we round smaller entries up.
+	 *
+	 * For blank segments (eg if we have no data segment for some reason)
+	 * we should either allocate a 32 byte fake MPU segment for it, or
+	 * add the extra logic to just not allocate RAM for that segment and
+	 * then not validate the MPU validity of it.
+	 */
+
 	/* Allocate RAM - not MPU aligned for now */
 	addrs->got_addr = kern_physmem_alloc(hdr->got_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->got_addr == 0) {

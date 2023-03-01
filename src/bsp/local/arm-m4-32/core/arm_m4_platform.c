@@ -289,6 +289,54 @@ platform_mpu_table_init(platform_mpu_phys_entry_t *table)
 	}
 }
 
+/**
+ * Validate if the given base address, size and protection field are valid.
+ *
+ * Return true if they're valid, false otherwise.
+ *
+ * @param[in] base_addr physical base address
+ * @param[in] size memory region size
+ * @param[in] prot protection ID
+ * @retval true if it'll work in an MPU slot, false otherwise
+ */
+bool
+platform_mpu_table_entry_validate(uint32_t base_addr, uint32_t size,
+    platform_prot_type_t prot)
+{
+	int i, sf = 0;
+	uint32_t mask;
+
+	/* minimum size */
+	if (size < 32) {
+		console_printf("%s: invalid size (%d)!\n", __func__, size);
+		return (false);
+	}
+
+	/* find the right size */
+	for (i = 4; i < 31; i++) {
+		if (1 << (i+1) == size) {
+			sf = i;
+			break;
+		}
+	}
+
+	/* not valid? whoops */
+	if (sf == 0) {
+		return (false);
+	}
+
+	/* calculate address mask */
+	mask = (1 << (sf + 1)) - 1;
+
+	/* check! */
+	if ((base_addr & mask) != 0) {
+		console_printf("%s: invalid alignment!\n", __func__);
+		return (false);
+	}
+
+	return (true);
+}
+
 /*
  * Initialise this particular slot with the given info.
  *
