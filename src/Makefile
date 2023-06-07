@@ -49,6 +49,7 @@ SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_rcc_table.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_gpio.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_syscfg.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_exti.c
+SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_hw_fmc.c
 SRCS += $(BSP_SUBDIR)/local/stm32f4/stm32f429_startup.s
 
 # Architecture BSP - in this case, ARM Cortex-M4.
@@ -98,6 +99,7 @@ SRCS += $(KERN_SUBDIR)/user/user_exec.c
 
 # The board initialisation routine
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/main.c
+SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/setup_fmc.c
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userland.c
 SRCS += $(BOARD_SUBDIR)/stm32f429-discovery/test_userload.c
 
