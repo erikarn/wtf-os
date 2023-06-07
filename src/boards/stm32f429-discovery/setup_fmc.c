@@ -34,6 +34,8 @@
 
 /* XXX these two for bring-up */
 #include "bsp/local/stm32f4/stm32f429_hw_fmc_reg.h"
+#include "bsp/local/stm32f4/stm32f429_hw_rcc_reg.h"
+#include "bsp/local/stm32f4/stm32f429_hw_syscfg_reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_map.h"
 
 #include "hw/types.h"
@@ -58,6 +60,11 @@ void
 board_stm32f429i_discovery_fmc_init(void)
 {
 	struct stm32f429_hw_gpio_pin_config cfg;
+	bool ret;
+
+	console_printf("%s: syscfg memrmp=0x%x\n",
+	    __func__,
+	    os_reg_read32(SYSCFG_BASE, STM32F429_HW_SYSCFG_REG_MEMRMP));
 
 	console_printf("[fsmc] Enable FSMC peripheral\n");
 
@@ -68,6 +75,22 @@ board_stm32f429i_discovery_fmc_init(void)
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOE, true);
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOF, true);
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOG, true);
+
+	/*
+	 * Take the ones out of reset that aren't at this point
+	 *
+	 * This should be implemented as a proper driver checking whether it's
+	 * in reset before taking them out.
+	 */
+#if 0
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOA, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOB, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOC, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOD, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOE, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOF, false);
+	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOG, false);
+#endif
 
 	/* + GPIO config + alt mode for SDRAM */
 
@@ -172,6 +195,15 @@ board_stm32f429i_discovery_fmc_init(void)
 	/* + FMC config in RCC - enables clock */
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_FSMC, true);
 
+	console_printf("%s: ahb1 rstr=0x%x, enr=0x%x\n",
+	    __func__,
+	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB1RSTR),
+	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB1ENR));
+	console_printf("%s: ahb3 rstr=0x%x, enr=0x%x\n",
+	    __func__,
+	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB3RSTR),
+	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB3ENR));
+
 	/*
 	 * The rest of this should be done in the FMC driver
 	 * with a bank config struct.  However for now just bootstrap and
@@ -183,33 +215,71 @@ board_stm32f429i_discovery_fmc_init(void)
 	 os_reg_write32(FMC_R_BASE, FMC_REG_SDTR2, 0x01010361);
 
 	/* + Sending SDRAM init commands */
+	console_printf("%s: SDCR1=0x%x, SDCR2=0x%x, SDTR1=0x%x, SDTR2=0x%x\n",
+	    __func__,
+	    os_reg_read32(FMC_R_BASE, FMC_REG_SDCR1),
+	    os_reg_read32(FMC_R_BASE, FMC_REG_SDCR2),
+	    os_reg_read32(FMC_R_BASE, FMC_REG_SDTR1),
+	    os_reg_read32(FMC_R_BASE, FMC_REG_SDTR2));
 
 	/* clock enable command */
 	console_printf("[fsmc] Clock enable command\n");
-	stm32f429_hw_fmc_send_clock_enable();
+	ret = stm32f429_hw_fmc_send_clock_enable();
+	if (! ret) {
+		console_printf("[fsmc] clock enable failed!\n");
+	}
 
 	/* PALL command */
-	stm32f429_hw_fmc_send_command(0x0a);
+	ret = stm32f429_hw_fmc_send_command(0x0a);
+	if (! ret) {
+		console_printf("[fsmc] PALL command failed!\n");
+	}
 
 	/* Auto-refresh command */
-	stm32f429_hw_fmc_send_command(0x6b);
+	ret = stm32f429_hw_fmc_send_command(0x6b);
+	if (! ret) {
+		console_printf("[fsmc] Auto refresh command failed!\n");
+	}
 
 	/* MRD register program */
-	stm32f429_hw_fmc_send_command(0x4620c);
+	ret = stm32f429_hw_fmc_send_command(0x4620c);
+	if (! ret) {
+		console_printf("[fsmc] MRD register command failed!\n");
+	}
 
 	/* Set refresh count */
 	stm32f429_hw_fmc_set_refresh_count(0x056a);
 
 	/* Disable write protection */
 	stm32f429_hw_fmc_disable_write_protection();
+	console_printf("[fsmc] Ready, I think?\n");
 
 	/*
 	 * Now, test the SDRAM between
-	 * 0xc0000000 -> 0xcfffffff
-	 * 0xd0000000 -> 0xdfffffff
+	 * bank1: 0xc0000000 -> 0xcfffffff
+	 * bank2: 0xd0000000 -> 0xdfffffff
+	 *
+	 * The commands have bit 3 (CTB2) to enable bank 2,
+	 * my guess is that this is in bank two at D0000000
+	 * for 8MB.
 	 *
 	 * (8MB on this board, right?)
+	 * c0000000 -> c3fffffff
 	 */
+	char *buf = (void *) 0xd0000000;
+
+	for (int i = 0; i < 8 * 1024 * 1024; i++) {
+		buf[i] = i % 256;
+	}
+	for (int i = 0; i < 8 * 1024 * 1024; i++) {
+		if (buf[i] != (i % 256)) {
+			console_printf("%s: 0x%x: got 0x%x expected 0x%x\n",
+			    __func__,
+			    i,
+			    buf[i],
+			    (i % 256));
+		}
+	}
 }
 
 /*
