@@ -119,6 +119,15 @@ static const struct stm32f429_rcc_table_entry periph_table[] = {
 	/* AHB2 */
 
 	/* AHB3 */
+	{
+	  .periph = STM32F429_RCC_PERPIH_FSMC,
+	  .bus = STM32F429_RCC_BUS_AHB3,
+	  .clock = STM32F429_RCC_CLOCK_HCLK,
+	  .rcc_reset_reg = STM32F429_RCC_REG_RCC_AHB3RSTR,
+	  .rcc_reset_mask = STM32F429_RCC_REG_RCC_AHB3RSTR_FMC_RST,
+	  .rcc_clken_reg = STM32F429_RCC_REG_RCC_AHB3ENR,
+	  .rcc_clken_mask = STM32F429_RCC_REG_RCC_AHB3ENR_FMC_EN,
+	},
 
 	/* APB1 */
 
