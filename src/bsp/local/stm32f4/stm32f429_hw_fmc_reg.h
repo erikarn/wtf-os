@@ -19,14 +19,43 @@
 /* control register 1, 2 */
 #define	FMC_REG_SDCR1			0x140
 #define	FMC_REG_SDCR2			0x144
+#define		FMC_REG_SDCR_NC_M	0x00000003
+#define		FMC_REG_SDCR_NC_S	0
+#define		FMC_REG_SDCR_NR_M	0x0000000c
+#define		FMC_REG_SDCR_NR_S	2
+#define		FMC_REG_SDCR_MWID_M	0x00000030
+#define		FMC_REG_SDCR_MWID_S	4
+#define		FMC_REG_SDCR_NB		BIT_U32(6)
+#define		FMC_REG_SDCR_CAS_M	0x00000180
+#define		FMC_REG_SDCR_CAS_S	7
+#define		FMC_REG_SDCR_WP		BIT_U32(9)
+#define		FMC_REG_SDCR_SDCLK_M	0x00000c00
+#define		FMC_REG_SDCR_SDCLK_S	10
+#define		FMC_REG_SDCR_RBURST	BIT_U32(12)
+#define		FMC_REG_SDCR_RPIPE_M	0x00006000
+#define		FMC_REG_SDCR_RPIPE_S	13
+
 
 /* timing register 1, 2 */
 #define	FMC_REG_SDTR1			0x148
 #define	FMC_REG_SDTR2			0x14c
+#define		FMC_REG_SDTR_TMRD_M	0x0000000f
+#define		FMC_REG_SDTR_TMRD_S	0
+#define		FMC_REG_SDTR_TXSR_M	0x000000f0
+#define		FMC_REG_SDTR_TXSR_S	4
+#define		FMC_REG_SDTR_TRAS_M	0x00000f00
+#define		FMC_REG_SDTR_TRAS_S	8
+#define		FMC_REG_SDTR_TRC_M	0x0000f000
+#define		FMC_REG_SDTR_TRC_S	12
+#define		FMC_REG_SDTR_TWR_M	0x000f0000
+#define		FMC_REG_SDTR_TWR_S	16
+#define		FMC_REG_SDTR_TRP_M	0x00f00000
+#define		FMC_REG_SDTR_TRP_S	20
+#define		FMC_REG_SDTR_TRCD_M	0x0f000000
+#define		FMC_REG_SDTR_TRCD_S	24
 
 /* command register */
 #define	FMC_REG_SDCMR			0x150
-
 #define		FMC_REG_SDCMR_MODE_M	0x00000007
 #define		FMC_REG_SDCMR_MODE_S	0
 #define		FMC_REG_SDCMR_CTB2	BIT_U32(3)
