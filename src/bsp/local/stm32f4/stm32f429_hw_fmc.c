@@ -6,7 +6,7 @@
 #include "stm32f429_hw_fmc_reg.h"
 #include "stm32f429_hw_fmc.h"
 
-/* XXX */
+/* XXX for debugging */
 #include <stddef.h>
 #include "kern/console/console.h"
 
@@ -21,26 +21,16 @@ stm32f429_hw_fmc_send_command(uint32_t command)
 {
 	uint32_t timeout;
 
+	console_printf("%s: writing 0x%08x\n", __func__, command);
+
 	os_reg_write32(FMC_R_BASE, FMC_REG_SDCMR, command);
 	timeout = 0xffff;
 	while ((timeout != 0) &&
-	     (os_reg_read32(FMC_R_BASE, FMC_REG_SDSR) & 0x00000020 != 0)) {
+	     ((os_reg_read32(FMC_R_BASE, FMC_REG_SDSR) & 0x00000020) != 0)) {
 		timeout--;
 	}
 
 	return (timeout != 0);
-}
-
-bool
-stm32f429_hw_fmc_send_clock_enable(void)
-{
-	bool ret;
-
-	ret = stm32f429_hw_fmc_send_command(0x09);
-	/* XXX do a real delay somehow? */
-	for (int index = 0; index<1000; index++)
-		;
-	return ret;
 }
 
 bool

@@ -22,6 +22,8 @@
 #include <stdbool.h>
 
 #include "bsp/local/os/reg.h"
+#include "bsp/local/os/bit.h"
+#include "bsp/local/os/bitmask.h"
 #include "bsp/local/stm32f4/stm32f429_hw_flash.h"
 #include "bsp/local/stm32f4/stm32f429_hw_usart.h"
 #include "bsp/local/stm32f4/stm32f429_hw_rcc.h"
@@ -224,25 +226,43 @@ board_stm32f429i_discovery_fmc_init(void)
 
 	/* clock enable command */
 	console_printf("[fsmc] Clock enable command\n");
-	ret = stm32f429_hw_fmc_send_clock_enable();
+	ret = stm32f429_hw_fmc_send_command(
+	    SM(FMC_REG_SDCMR_MODE_CMD_CLK_EN, FMC_REG_SDCMR_MODE)
+	    | FMC_REG_SDCMR_CTB2);
+
 	if (! ret) {
 		console_printf("[fsmc] clock enable failed!\n");
 	}
+	/* XXX do a real delay somehow? */
+	for (int index = 0; index<1000; index++)
+		;
 
 	/* PALL command */
-	ret = stm32f429_hw_fmc_send_command(0x0a);
+	/* 0x0a */
+	ret = stm32f429_hw_fmc_send_command(
+	    SM(FMC_REG_SDCMR_MODE_CMD_PALL, FMC_REG_SDCMR_MODE)
+	    | FMC_REG_SDCMR_CTB2);
 	if (! ret) {
 		console_printf("[fsmc] PALL command failed!\n");
 	}
 
 	/* Auto-refresh command */
-	ret = stm32f429_hw_fmc_send_command(0x6b);
+	/* 0x6b */
+	ret = stm32f429_hw_fmc_send_command(
+	    SM(FMC_REG_SDCMR_MODE_CMD_AUTO_REFRESH, FMC_REG_SDCMR_MODE)
+	    | FMC_REG_SDCMR_CTB2
+	    | SM(0x3, FMC_REG_SDCMR_NRFS));
 	if (! ret) {
 		console_printf("[fsmc] Auto refresh command failed!\n");
 	}
 
 	/* MRD register program */
-	ret = stm32f429_hw_fmc_send_command(0x4620c);
+	/* 0x4620c */
+	/* mrd - 0x231 */
+	ret = stm32f429_hw_fmc_send_command(
+	    SM(FMC_REG_SDCMR_MODE_CMD_LOAD, FMC_REG_SDCMR_MODE)
+	    | FMC_REG_SDCMR_CTB2
+	    | SM(0x231, FMC_REG_SDCMR_MRD));
 	if (! ret) {
 		console_printf("[fsmc] MRD register command failed!\n");
 	}
@@ -268,9 +288,11 @@ board_stm32f429i_discovery_fmc_init(void)
 	 */
 	char *buf = (void *) 0xd0000000;
 
+	console_printf("[fmc] starting 8mb write..\n");
 	for (int i = 0; i < 8 * 1024 * 1024; i++) {
 		buf[i] = i % 256;
 	}
+	console_printf("[fmc] starting 8mb validate read..\n");
 	for (int i = 0; i < 8 * 1024 * 1024; i++) {
 		if (buf[i] != (i % 256)) {
 			console_printf("%s: 0x%x: got 0x%x expected 0x%x\n",
@@ -280,22 +302,5 @@ board_stm32f429i_discovery_fmc_init(void)
 			    (i % 256));
 		}
 	}
+	console_printf("[fmc] done!\n");
 }
-
-/*
- * TODO item for the rest of it
- *
- * + Enable GPIOB, C, D, E, F, G interfaces
- * + GPIO config + alt mode for SDRAM
- * + FMC config in RCC
- * + FMC configuration for banks
- * + Sending SDRAM init commands
- * + PALL
- * + Auto refresh
- * + MRD register
- * + Refresh count
- * + Disable write protection
- * + and how to test it!
- */
-
-
