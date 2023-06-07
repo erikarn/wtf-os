@@ -34,11 +34,8 @@
 
 #include "bsp/local/stm32f4/stm32f429_hw_fmc.h"
 
-/* XXX these two for bring-up */
-#include "bsp/local/stm32f4/stm32f429_hw_fmc_reg.h"
-#include "bsp/local/stm32f4/stm32f429_hw_rcc_reg.h"
-#include "bsp/local/stm32f4/stm32f429_hw_syscfg_reg.h"
 #include "bsp/local/stm32f4/stm32f429_hw_map.h"
+#include "bsp/local/stm32f4/stm32f429_hw_fmc_reg.h"
 
 #include "hw/types.h"
 
@@ -64,10 +61,6 @@ board_stm32f429i_discovery_fmc_init(void)
 	struct stm32f429_hw_gpio_pin_config cfg;
 	bool ret;
 
-	console_printf("%s: syscfg memrmp=0x%x\n",
-	    __func__,
-	    os_reg_read32(SYSCFG_BASE, STM32F429_HW_SYSCFG_REG_MEMRMP));
-
 	console_printf("[fsmc] Enable FSMC peripheral\n");
 
 	/* + Enable GPIOB, C, D, E, F, G interfaces */
@@ -77,22 +70,6 @@ board_stm32f429i_discovery_fmc_init(void)
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOE, true);
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOF, true);
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOG, true);
-
-	/*
-	 * Take the ones out of reset that aren't at this point
-	 *
-	 * This should be implemented as a proper driver checking whether it's
-	 * in reset before taking them out.
-	 */
-#if 0
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOA, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOB, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOC, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOD, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOE, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOF, false);
-	stm32f429_rcc_peripheral_reset(STM32F429_RCC_PERPIH_GPIOG, false);
-#endif
 
 	/* + GPIO config + alt mode for SDRAM */
 
@@ -196,15 +173,6 @@ board_stm32f429i_discovery_fmc_init(void)
 
 	/* + FMC config in RCC - enables clock */
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_FSMC, true);
-
-	console_printf("%s: ahb1 rstr=0x%x, enr=0x%x\n",
-	    __func__,
-	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB1RSTR),
-	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB1ENR));
-	console_printf("%s: ahb3 rstr=0x%x, enr=0x%x\n",
-	    __func__,
-	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB3RSTR),
-	    os_reg_read32(RCC_BASE, STM32F429_RCC_REG_RCC_AHB3ENR));
 
 	/*
 	 * The rest of this should be done in the FMC driver
