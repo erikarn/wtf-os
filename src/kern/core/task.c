@@ -185,7 +185,7 @@ kern_task_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    kern_stack + kern_stack_size,
-	    entry_point, arg, 0, false);
+	    entry_point, arg, 0, false, kern_task_exit);
 	/* kern_stack_top isn't used for kernel tasks */
 	task->kern_stack_top = 0;
 
@@ -251,7 +251,7 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    user_stack + user_stack_size,
-	    entry_point, arg, r9, true);
+	    entry_point, arg, r9, true, kern_task_exit);
 	/* And we program in our kernel stack for privileged code */
 	task->kern_stack_top = kern_stack + kern_stack_size;
 
@@ -741,11 +741,15 @@ kern_task_exit(void)
 	platform_spinlock_unlock(&kern_task_spinlock);
 
 	/*
-	 * XXX TODO: spin on platform_kick_context_switch()
-	 * until we're just cleaned up?
+	 * Spin on platform_kick_context_switch()
+	 * until the task is finally deleted.
+	 * We shouldn't ever be scheduled after this.
 	 */
+	while (1) {
+		platform_kick_context_switch();
+	}
 
-	return;
+	/* XXX better not get here */
 }
 
 /**

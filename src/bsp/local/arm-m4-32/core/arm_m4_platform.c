@@ -184,7 +184,7 @@ platform_task_exit(void)
 
 stack_addr_t
 platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
-    uint32_t r9, bool is_user)
+    uint32_t r9, bool is_user, void *exit_func)
 {
 	stack_addr_t *ps = (void *) (uintptr_t) stack;
 
@@ -194,7 +194,7 @@ platform_task_stack_setup(stack_addr_t stack, void *entry_point, void *param,
 	ps--;
 	*ps = ((kern_code_exec_addr_t) entry_point) & 0xfffffffe;	// PC: bit 0 must be clear here
 	ps--;
-	*ps = ((kern_code_exec_addr_t) platform_task_exit);		// LR
+	*ps = ((kern_code_exec_addr_t) exit_func) & 0xffffffffe;;		// LR
 	ps = ps - 5;	/* skip r12, r3, r3, r1 */
 	*ps = ((kern_code_exec_addr_t) entry_point); // r0
 	ps--;
