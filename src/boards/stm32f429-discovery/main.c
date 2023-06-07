@@ -66,6 +66,8 @@ extern void test_userload(void);
 extern void arm_m4_task_switch();
 extern void arm_m4_svc_handler();
 
+/* XXX */
+extern void board_stm32f429i_discovery_fmc_init(void);
 
 static void
 cons_putc(char c)
@@ -286,6 +288,9 @@ main(void)
 
     /* Set this pin high so we get toggling LEDs */
     stm32f429_hw_gpio_toggle_pin(STM32F429_HW_GPIO_BLOCK_GPIOG, 13);
+
+    /* SDRAM setup */
+    board_stm32f429i_discovery_fmc_init();
 
     /*
      * Do some external interrupt experimenting.
