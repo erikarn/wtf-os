@@ -178,8 +178,23 @@ bool
 stm32f429_rcc_peripheral_reset(stm32f429_rcc_peripheral_name_t periph,
     bool reset)
 {
-	/* XXX TODO */
-	return (false);
+	const struct stm32f429_rcc_table_entry *pe;
+	uint32_t reg;
+
+	pe = stm32f429_rcc_table_get_peripheral(periph);
+	if (pe == NULL) {
+		return (false);
+	}
+
+	reg = os_reg_read32(RCC_BASE, pe->rcc_reset_reg);
+	if (reset) {
+		reg |= pe->rcc_reset_mask;
+	} else {
+		reg &= ~pe->rcc_reset_mask;
+	}
+	os_reg_write32(RCC_BASE, pe->rcc_reset_reg, reg);
+
+	return (true);
 }
 
 /**
