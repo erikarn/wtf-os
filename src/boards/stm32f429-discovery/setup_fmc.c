@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ * Copyright (C) 2023 Adrian Chadd <adrian@freebsd.org>.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -72,7 +72,6 @@ board_stm32f429i_discovery_fmc_init(void)
 	stm32f429_rcc_peripheral_enable(STM32F429_RCC_PERPIH_GPIOG, true);
 
 	/* + GPIO config + alt mode for SDRAM */
-
 	stm32f429_hw_gpio_config_init(&cfg);
 	cfg.mode = STM32F429_HW_GPIO_PIN_MODE_ALTERNATE;
 	cfg.speed = STM32F429_HW_GPIO_PIN_SPEED_HIGH;
@@ -80,8 +79,6 @@ board_stm32f429i_discovery_fmc_init(void)
 	cfg.out_pupd = STM32F429_HW_GPIO_PIN_PUPD_NONE;
 
 	/* GPIO B */
-	/* Note: mode, pupd, speed includes pins PB3,PB4 too, but they're not
-	 * routed to the SDRAM controller? And ALT func is set to 0 for those? */
 	stm32f429_hw_gpio_alternate_set(STM32F429_HW_GPIO_BLOCK_GPIOB, 5, 0x0c);
 	stm32f429_hw_gpio_config_set(STM32F429_HW_GPIO_BLOCK_GPIOB, 5, &cfg);
 	stm32f429_hw_gpio_alternate_set(STM32F429_HW_GPIO_BLOCK_GPIOB, 6, 0x0c);
@@ -183,14 +180,6 @@ board_stm32f429i_discovery_fmc_init(void)
 	 os_reg_write32(FMC_R_BASE, FMC_REG_SDCR2, 0x000001D4);
 	 os_reg_write32(FMC_R_BASE, FMC_REG_SDTR1, 0x0F1F6FFF);
 	 os_reg_write32(FMC_R_BASE, FMC_REG_SDTR2, 0x01010361);
-
-	/* + Sending SDRAM init commands */
-	console_printf("%s: SDCR1=0x%x, SDCR2=0x%x, SDTR1=0x%x, SDTR2=0x%x\n",
-	    __func__,
-	    os_reg_read32(FMC_R_BASE, FMC_REG_SDCR1),
-	    os_reg_read32(FMC_R_BASE, FMC_REG_SDCR2),
-	    os_reg_read32(FMC_R_BASE, FMC_REG_SDTR1),
-	    os_reg_read32(FMC_R_BASE, FMC_REG_SDTR2));
 
 	/* clock enable command */
 	console_printf("[fsmc] Clock enable command\n");

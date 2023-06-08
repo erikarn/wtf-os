@@ -21,6 +21,8 @@
 #include <stdbool.h>
 
 #include "../os/reg.h"
+#include "../os/bit.h"
+
 #include "stm32f429_hw_map.h"
 #include "stm32f429_hw_fmc_reg.h"
 #include "stm32f429_hw_fmc.h"
@@ -40,13 +42,14 @@
 bool
 stm32f429_hw_fmc_send_command(uint32_t command)
 {
-	uint32_t timeout;
+	uint32_t timeout = 0xffff;
 
 	os_reg_write32(FMC_R_BASE, FMC_REG_SDCMR, command);
-	timeout = 0xffff;
+
 	/* XXX TODO: some early boot delay function? */
 	while ((timeout != 0) &&
-	     ((os_reg_read32(FMC_R_BASE, FMC_REG_SDSR) & 0x00000020) != 0)) {
+	     ((os_reg_read32(FMC_R_BASE, FMC_REG_SDSR) &
+	       FMC_REG_SDSR_BUSY) != 0)) {
 		timeout--;
 	}
 
@@ -78,14 +81,16 @@ stm32f429_hw_fmc_set_refresh_count(uint32_t refresh)
 	return (true);
 }
 
+/**
+ * Disable write protection.
+ */
 bool
 stm32f429_hw_fmc_disable_write_protection(void)
 {
 	uint32_t reg;
 
 	reg = os_reg_read32(FMC_R_BASE, FMC_REG_SDCR2);
-	/* XXX TODO: yeah, this should be a proper RMW */
-	reg &= 0xFFFFFDFF;
+	reg &= ~FMC_REG_SDCR_WP;
 	os_reg_write32(FMC_R_BASE, FMC_REG_SDCR2, reg);
 
 	return (true);

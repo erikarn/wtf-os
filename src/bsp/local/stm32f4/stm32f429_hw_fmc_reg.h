@@ -99,5 +99,11 @@
 
 /* status register */
 #define	FMC_REG_SDSR			0x158
+#define		FMC_REG_SDSR_RE		BIT_U32(0)
+#define		FMC_REG_SDSR_MODES1_M	0x00000006
+#define		FMC_REG_SDSR_MODES1_S	1
+#define		FMC_REG_SDSR_MODES2_M	0x00000018
+#define		FMC_REG_SDSR_MODES2_S	3
+#define		FMC_REG_SDSR_BUSY	BIT_U32(5)
 
 #endif	/* __STM32F429_HW_FMC_REG_H__ */
