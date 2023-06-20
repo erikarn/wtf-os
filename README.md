@@ -37,8 +37,10 @@ work and bootstrap code it should run on any other cortex M4 device.
 
 # What's supported so far?
 
-* Kernel tasks - XIP
-* User tasks - XIP
+* Kernel tasks - XIP (although non-XIP is easy to do)
+* User tasks w/ MPU - XIP (again, non-XIP is easy to do)
+* SDRAM controller
+* MPU support - yes userland tasks are MPU protected!
 * GPIO, Serial, clock, power tree
 * NVIC
 * System Timer
@@ -49,10 +51,10 @@ work and bootstrap code it should run on any other cortex M4 device.
 
 (Ie, what am I actively working on in my tree right now.)
 
-* SDRAM controller
-* MPU support
 * Basic async IPC (copying, but non-blocking, will look at zero-copy
   pipelines later for things that support it.)
+* LCD / display controller
+* I2C controller
 
 # I want to contribute!
 
