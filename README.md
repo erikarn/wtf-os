@@ -39,6 +39,7 @@ work and bootstrap code it should run on any other cortex M4 device.
 
 * Kernel tasks - XIP (although non-XIP is easy to do)
 * User tasks w/ MPU - XIP (again, non-XIP is easy to do)
+* Dynamic (runtime) loading / destroying of user tasks from flash, XIP for now
 * SDRAM controller
 * MPU support - yes userland tasks are MPU protected!
 * GPIO, Serial, clock, power tree
