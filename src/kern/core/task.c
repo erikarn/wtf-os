@@ -121,6 +121,9 @@ kern_task_generic_init(struct kern_task *task, const char *name)
 	list_node_init(&task->task_list_node);
 	list_node_init(&task->task_active_node);
 
+	/* XXX TODO: should be some per-task port init? */
+	list_head_init(&task->task_port_list);
+
 	task->is_on_active_list = false;
 	task->is_on_dying_list = false;
 
@@ -378,6 +381,8 @@ static void
 kern_task_cleanup(struct kern_task *task)
 {
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
+
+	/* XXX TODO: need to clean up ports, IPC too */
 
 	/* Clean up memory regions where required */
 	kern_task_mem_cleanup(&task->task_mem);
