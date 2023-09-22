@@ -85,6 +85,9 @@ struct kern_task {
 	struct list_node task_list_node;
 	struct list_node task_active_node;
 
+	/* list of ports for this task */
+	struct list_head task_port_list;
+
 	bool is_on_active_list;
 	bool is_on_dying_list;
 
