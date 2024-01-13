@@ -29,6 +29,7 @@
 
 typedef uint32_t kern_task_signal_mask_t;
 typedef uint32_t kern_task_signal_set_t;
+typedef uint32_t kern_task_signal_id_t;
 
 /*
  * These are the system defined tasks that are designed to be handled
@@ -42,10 +43,15 @@ typedef uint32_t kern_task_signal_set_t;
  *          for tasks will get cleaned up in kern_task_exit().  If a
  *          task doesn't handle this signal then at some point ("when"
  *          is a great question here!) it will be terminated anyway.
+ *
+ * PIPE - For now, signaling that one or more pipes owned by this
+ *        task need servicing.  Later on it should be configurable,
+ *        rather than hard-coded.
  */
 #define	KERN_SIGNAL_ALL_MASK			0xffffffff
 #define	KERN_SIGNAL_TASK_MASK			0x000000ff
 #define	KERN_SIGNAL_TASK_KSLEEP			BIT_U32(0)
 #define	KERN_SIGNAL_TASK_TERMINATE		BIT_U32(1)
+#define	KERN_SIGNAL_TASK_PIPE			BIT_U32(2)
 
 #endif	/* __KERN_SIGNAL_H__ */
