@@ -46,11 +46,41 @@ kern_ipc_pipe_setup(kern_ipc_pipe_t *pipe, char *buf, int len,
 {
 }
 
+/**
+ * Shutdown a pipe.
+ *
+ * This just marks a pipe as shutdown - no new work can be scheduled
+ * to it.  Existing data can be read from the pipe, but then no more
+ * data will be available.
+ */
 void
 kern_ipc_pipe_close(kern_ipc_pipe_t *pipe)
 {
 }
 
+/**
+ * Close a pipe.
+ *
+ * This just marks a pipe as closed - no new work can be scheduled
+ * to it and existing data will be flushed.
+ *
+ * Ideally a pipe will have been shutdown and drained first, so
+ * any existing work has been completed.
+ *
+ * Once a pipe has been marked as closed it can't be re-opened, and
+ * the memory buffer that it points to is considered no bueno for further
+ * use.
+ */
+void
+kern_ipc_pipe_close(kern_ipc_pipe_t *pipe)
+{
+}
+
+/**
+ * Set the pipe owner.  In reality this means the consumer -
+ * this is who will be responsible for closing the pipe, and
+ * will receive signals when data is queued into it.
+ */
 kern_error_t
 kern_ipc_pipe_set_owner(kern_ipc_pipe_t *pipe, kern_task_id_t task)
 {
