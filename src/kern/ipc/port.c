@@ -263,6 +263,15 @@ kern_ipc_port_create(kern_task_id_t task)
 	return (port);
 }
 
+/**
+ * Destroy the given IPC port.
+ *
+ * This frees all of the resources for the given port.
+ *
+ * I haven't yet figured out the rest of the semantics
+ * around the shutdown path, notably how/when the queued
+ * messages are freed, how to notify the callers, etc.
+ */
 void
 kern_ipc_port_destroy(struct kern_ipc_port *port)
 {
@@ -318,52 +327,8 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_CLOSED;
 
-	/*
-	 * XXX TODO: walk the list of RX'ed frames that
-	 * we haven't yet handled and queue them for
-	 * completion w/ a canceled/closed status.
-	 * Yeah I'm going to have to add that to the IPC
-	 * message.  That way the receiver knows to
-	 * immediately toss them.
-	 */
+	/* TODO: all the work */
 
-	/*
-	 * XXX TODO: Next up is frames in our completed
-	 * queue.
-	 */
-
-	/*
-	 * XXX TODO: Frames that we own that are on the
-	 * queues of other ports?  Maybe we can cancel them.
-	 * Maybe they're dequeued already and are owned
-	 * by the receiving task for now.  In any case,
-	 * we'll cancel the ones we can cancel and the
-	 * others we'll need to wait until they're completed
-	 * and on our completion queue before we cancel those.
-	 */
-
-	/*
-	 * We also can't close if there are outstanding refcounts,
-	 * so we need to stick around until that's done.
-	 */
-
-	/*
-	 * XXX TODO; Yes, this means I need to modify this
-	 * routine to be callable multiple times and return
-	 * whether the close has finished or not.  That way
-	 * the owner (ie, some wrapper function?) can either
-	 * block waiting for things to finish, or can return
-	 * and let the task continue doing other stuff; it
-	 * can then check in later on to free things.
-	 *
-	 * Finally yeah, this means during actual task shutdown
-	 * we'll end up looping over ports to wait until
-	 * they're done before we actually /exit/ the task.
-	 * Maybe that's nice, maybe we can put ports that
-	 * just have refcounts outstanding on some dead list
-	 * and free them in the idle thread if needs be,
-	 * so the task can be cleaned up later.
-	 */
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	return (false);
