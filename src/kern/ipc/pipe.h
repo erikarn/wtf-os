@@ -35,7 +35,8 @@
 typedef enum {
 	KERN_IPC_PIPE_STATE_NONE = 0,
 	KERN_IPC_PIPE_STATE_OPEN = 1,
-	KERN_IPC_PIPE_STATE_CLOSED = 2,
+	KERN_IPC_PIPE_STATE_SHUTDOWN = 2,
+	KERN_IPC_PIPE_STATE_CLOSED = 3,
 } kern_ipc_pipe_state_t;
 
 typedef struct kern_ipc_pipe kern_ipc_pipe_t;
@@ -58,14 +59,19 @@ struct kern_ipc_msg {
 	char msg[0];
 };
 
+extern	void kern_ipc_pipe_init(void);
+
 extern	void kern_ipc_pipe_setup(kern_ipc_pipe_t *pipe, char *buf, int len,
 	    uint32_t max_msg_size);
 extern	void kern_ipc_pipe_close(kern_ipc_pipe_t *pipe);
+extern	void kern_ipc_pipe_shutdown(kern_ipc_pipe_t *pipe);
 extern	kern_error_t kern_ipc_pipe_set_owner(kern_ipc_pipe_t *pipe,
 	    kern_task_id_t task);
 extern	kern_error_t kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe,
 	    const kern_ipc_msg_t *msg);
 extern	kern_error_t kern_ipc_pipe_dequeue(kern_ipc_pipe_t *pipe,
+	    kern_ipc_msg_t *msg);
+extern	kern_error_t kern_ipc_pipe_consume(kern_ipc_pipe_t *pipe,
 	    kern_ipc_msg_t *msg);
 extern	kern_error_t kern_ipc_pipe_flush(kern_ipc_pipe_t *pipe, uint32_t *num);
 
