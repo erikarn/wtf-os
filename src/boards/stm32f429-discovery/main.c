@@ -34,9 +34,13 @@
 
 #include "kern/console/console.h"
 #include "kern/core/task.h"
+#include "kern/core/error.h"
 #include "kern/core/timer.h"
 #include "kern/core/physmem.h"
 #include "kern/user/user_exec.h"
+
+#include "kern/ipc/pipe.h"
+#include "kern/ipc/port.h"
 
 /* flash resource */
 #include "kern/flash/flash_resource.h"
@@ -242,6 +246,10 @@ main(void)
 
     /* Kernel physmem allocator */
     kern_physmem_init();
+
+    /* Pipe and Port IPC init */
+    kern_ipc_pipe_init();
+    kern_ipc_port_init();
 
     /* do post CPU init interrupt enable for things like USART */
     /* (yeah a hack for now) */
