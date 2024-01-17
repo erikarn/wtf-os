@@ -177,21 +177,27 @@ user_exec_program_setup_got_segment(paddr_t addr, size_t size,
 		 * We need to now compare it against the segments we
 		 * know about to see which segment it is in, and relocate
 		 * them to the correct paddr_t addresses.
+		 *
+		 * Eg, if BSS starts at 0xcc, and the first GOT entry
+		 * is at 0xcc, then we need to put it at the beginning
+		 * of the BSS table (offset 0, not offset 0xcc!)
 		 */
 		if (is_in_range(val, hdr->bss_offset, hdr->bss_size)) {
-			*got_entry = val + addrs->bss_addr;
+			*got_entry = addrs->bss_addr + (val - hdr->bss_offset);
 		} else if (is_in_range(val, hdr->text_offset, hdr->text_size)) {
-			*got_entry = val + addrs->text_addr;
+			*got_entry = addrs->text_addr + (val - hdr->text_offset);
 		} else if (is_in_range(val, hdr->data_offset, hdr->data_size)) {
-			*got_entry = val + addrs->data_addr;
+			*got_entry = addrs->data_addr + (val - hdr->data_offset);
 		} else if (is_in_range(val, hdr->rodata_offset,
 		    hdr->rodata_size)) {
-			*got_entry = val + addrs->rodata_addr;
+			*got_entry = addrs->rodata_addr + (val - hdr->rodata_offset);
 		} else {
 			/* XXX TODO: more debugging obv */
 			console_printf("%s: couldn't find GOT offset (%d) in segments!\n", __func__, val);
 			return (false);
 		}
+
+		console_printf("  GOT: [%d]: 0x%x -> 0x%x\n", i, val, *got_entry);
 
 		/* Next entry */
 		got_entry++;
