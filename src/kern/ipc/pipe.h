@@ -53,6 +53,7 @@ struct kern_ipc_pipe {
 	uint32_t max_msg_size;
 };
 
+// XXX TODO: rename to kern_ipc_pipe_msg? */
 struct kern_ipc_msg {
 	uint16_t len;
 	uint16_t id;
