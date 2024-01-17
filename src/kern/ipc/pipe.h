@@ -76,4 +76,8 @@ extern	kern_error_t kern_ipc_pipe_consume(kern_ipc_pipe_t *pipe,
 	    kern_ipc_msg_t *msg);
 extern	kern_error_t kern_ipc_pipe_flush(kern_ipc_pipe_t *pipe, uint32_t *num);
 
+/* ipc message routines */
+extern	uint16_t kern_ipc_msg_payload_len(const kern_ipc_msg_t *msg);
+extern	const char * kern_ipc_msg_payload_buf(const kern_ipc_msg_t *msg);
+
 #endif /* __KERN_IPC_PIPE_H__ */
