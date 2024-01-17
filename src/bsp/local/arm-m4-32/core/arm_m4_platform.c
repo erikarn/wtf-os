@@ -385,6 +385,8 @@ platform_mpu_table_set(platform_mpu_phys_entry_t *e, uint32_t base_addr,
 	/* check! */
 	if ((base_addr & mask) != 0) {
 		console_printf("%s: invalid alignment!\n", __func__);
+		console_printf("%s: base_addr=0x%x, size=%d, mask=0x%x\n",
+		    __func__, base_addr, size, mask);
 		return (false);
 	}
 
@@ -402,13 +404,20 @@ platform_mpu_table_set(platform_mpu_phys_entry_t *e, uint32_t base_addr,
 		break;
 	case PLATFORM_PROT_TYPE_NOEXEC_RW:
 		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_TEX, 0x1);
-		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_AP, 0x3);
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_AP, 0x3); // read/write
 		rasr_reg |= ARM_M4_MPU_REG_RSAR_B;
 		rasr_reg |= ARM_M4_MPU_REG_RSAR_C;
 		rasr_reg |= ARM_M4_MPU_REG_RSAR_S;
 		rasr_reg |= ARM_M4_MPU_REG_RSAR_XN;
 		break;
-
+	case PLATFORM_PROT_TYPE_NOEXEC_RO:
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_TEX, 0x1);
+		rasr_reg |= RMW(rasr_reg, ARM_M4_MPU_REG_RSAR_AP, 0x2); // read-only, no priv write
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_B;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_C;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_S;
+		rasr_reg |= ARM_M4_MPU_REG_RSAR_XN;
+		break;
 	default:
 		console_printf("%s: invalid prot (%d)\n", __func__, prot);
 		return (false);

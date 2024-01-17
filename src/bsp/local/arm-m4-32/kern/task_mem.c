@@ -143,8 +143,16 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RW);
 
 	/* User heap */
+	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_USER_HEAP);
+	size = kern_task_mem_get_size(&task->task_mem, TASK_MEM_ID_USER_HEAP);
+	platform_mpu_table_set(&task->mpu_phys_table[2],
+	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RW);
 
 	/* task GOT */
+	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_USER_GOT);
+	size = kern_task_mem_get_size(&task->task_mem, TASK_MEM_ID_USER_GOT);
+	platform_mpu_table_set(&task->mpu_phys_table[3],
+	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RO);
 
 	/* task data */
 

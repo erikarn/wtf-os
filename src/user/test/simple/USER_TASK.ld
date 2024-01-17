@@ -40,7 +40,7 @@ SECTIONS
     LONG(  SIZEOF(.rodata));
 
     /* heap size */
-    LONG(1024);
+    LONG(2048);
     /* stack size */
     LONG(1024);
 

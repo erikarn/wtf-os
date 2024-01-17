@@ -331,12 +331,10 @@ main(void)
     kern_task_setup();
 
     /* Our test userland task */
-    setup_test_userland_task();
+    //setup_test_userland_task();
 
     /* Ok, let's try loading TEST.BIN */
     test_userload();
-
-
 
     /* Ready to start context switching */
     kern_task_ready();

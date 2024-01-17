@@ -138,6 +138,13 @@ test_userload(void)
          * only one free for hardware access.
          */
 
+	/*
+	 * TODO: something's being accessed between data and heap in memory,
+	 * my guess is that the BSS start address isn't "right" somehow, and
+	 * it's not where it should be? Let's go investigate some more.
+	 * (ie, the 'count' variable in the test program.)
+	 */
+
 	kern_task_mem_init(&tm);
 
 	/* Allocate RAM - not MPU aligned for now */
@@ -185,7 +192,8 @@ test_userload(void)
         kern_task_user_init(task, addrs.start_addr, NULL, addrs.got_addr,
             "TEST.BIN",
             &tm,
-            TASK_FLAGS_DYNAMIC_STRUCT); // | TASK_FLAGS_ENABLE_MPU);
+            TASK_FLAGS_DYNAMIC_STRUCT | TASK_FLAGS_ENABLE_MPU);
+            //TASK_FLAGS_DYNAMIC_STRUCT);
 
         /* And start it */
         kern_task_start(task);
