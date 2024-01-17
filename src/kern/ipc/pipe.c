@@ -38,11 +38,19 @@
 #include <kern/core/signal.h>
 #include <kern/core/physmem.h>
 #include <kern/core/error.h>
+#include <kern/core/logging.h>
 
 #include <kern/ipc/pipe.h>
 
+LOGGING_DEFINE(LOG_IPC_PIPE, "ipc_pipe", KERN_LOG_LEVEL_INFO);
+
 static platform_spinlock_t kern_ipc_pipe_spinlock;
 
+/**
+ * Initialise the IPC subsystem.
+ *
+ * This just initialises the shared spinlock.
+ */
 void
 kern_ipc_pipe_init(void)
 {
@@ -52,9 +60,57 @@ kern_ipc_pipe_init(void)
 static kern_error_t
 kern_ipc_pipe_consume_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
 {
-	return KERN_ERR_UNIMPLEMENTED;
+	uint16_t len;
+
+	/* Only good if we're open or shutdown */
+	if ((pipe->state != KERN_IPC_PIPE_STATE_OPEN) &&
+	    (pipe->state != KERN_IPC_PIPE_STATE_SHUTDOWN)) {
+		return KERN_ERR_SHUTDOWN;
+	}
+
+	/* Check if empty */
+	if (pipe->buf_offset == 0) {
+		return KERN_ERR_EMPTY;
+	}
+
+	/* Check if we even have enough data, if not it's an error */
+	if (pipe->buf_offset < sizeof(struct kern_ipc_msg)) {
+		KERN_LOG(LOG_IPC_PIPE, KERN_LOG_LEVEL_CRIT,
+		    "%s: pipe %p has too little data (%d)\n",
+		    __func__, pipe, pipe->buf_offset);
+		pipe->buf_offset = 0;
+		return KERN_ERR_EMPTY;
+	}
+
+	/* TODO: should really use unaligned accessors here */
+	len = ((kern_ipc_msg_t *) pipe->buf_ptr)->len;
+
+	/* .. and consume it */
+	/*
+	 * Yeah, this isn't a ring buffer, and I don't care right now.
+	 * A ring buffer would avoid the buffer copy-down, and once
+	 * everything else is working + debugged it would be beneficial
+	 * to implement it.
+	 */
+	kern_memcpy(pipe->buf_ptr, pipe->buf_ptr + len,
+	    pipe->buf_offset - len);
+	pipe->buf_offset = pipe->buf_offset - len;
+
+	/* Return the consumed payload length */
+	msg->len = len;
+
+	return KERN_ERR_OK;
 }
 
+/**
+ * Return how much space is left in the given pipe.
+ *
+ * Must be called with the lock held, can be called from any
+ * task context.
+ *
+ * @param[in] pipe IPC pipe
+ * @retval how many bytes are available
+ */
 static uint32_t
 kern_ipc_pipe_space_left_locked(kern_ipc_pipe_t *pipe)
 {
@@ -92,10 +148,58 @@ kern_ipc_pipe_queue_locked(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 	return KERN_ERR_OK;
 }
 
+/*
+ * Dequeue a message from the pipe.
+ */
 kern_error_t
 kern_ipc_pipe_dequeue_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
 {
-	return KERN_ERR_UNIMPLEMENTED;
+	uint16_t len;
+
+	/* Only good if we're open or shutdown */
+	if ((pipe->state != KERN_IPC_PIPE_STATE_OPEN) &&
+	    (pipe->state != KERN_IPC_PIPE_STATE_SHUTDOWN)) {
+		return KERN_ERR_SHUTDOWN;
+	}
+
+	/* Check if empty */
+	if (pipe->buf_offset == 0) {
+		return KERN_ERR_EMPTY;
+	}
+
+	/* Check if we even have enough data, if not it's an error */
+	if (pipe->buf_offset < sizeof(struct kern_ipc_msg)) {
+		KERN_LOG(LOG_IPC_PIPE, KERN_LOG_LEVEL_CRIT,
+		    "%s: pipe %p has too little data (%d)\n",
+		    __func__, pipe, pipe->buf_offset);
+		pipe->buf_offset = 0;
+		return KERN_ERR_EMPTY;
+	}
+
+	/* TODO: should really use unaligned accessors here */
+	len = ((kern_ipc_msg_t *) pipe->buf_ptr)->len;
+
+	/* Check if we have enough space */
+	if (len < msg->len) {
+		return KERN_ERR_TOOBIG;
+	}
+
+	/* Copy the message .. */
+
+	kern_memcpy(msg, pipe->buf_ptr, len);
+
+	/* .. and consume it */
+	/*
+	 * Yeah, this isn't a ring buffer, and I don't care right now.
+	 * A ring buffer would avoid the buffer copy-down, and once
+	 * everything else is working + debugged it would be beneficial
+	 * to implement it.
+	 */
+	kern_memcpy(pipe->buf_ptr, pipe->buf_ptr + len,
+	    pipe->buf_offset - len);
+	pipe->buf_offset = pipe->buf_offset - len;
+
+	return KERN_ERR_OK;
 }
 
 static kern_error_t
@@ -127,6 +231,7 @@ kern_ipc_pipe_setup(kern_ipc_pipe_t *pipe, char *buf, int len,
 	 * make an explicit call to mark it open?
 	 */
 	pipe->state = KERN_IPC_PIPE_STATE_OPEN;
+	pipe->owner_task = KERN_TASK_ID_NONE;
 
 	pipe->buf_ptr = buf;
 	pipe->buf_size = len;
@@ -200,6 +305,23 @@ kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 	t = kern_ipc_pipe_queue_locked(pipe, msg);
 	platform_spinlock_unlock(&kern_ipc_pipe_spinlock);
 
+	if (t != KERN_ERR_OK) {
+		return t;
+	}
+
+	/*
+	 * TODO: this is a bit racy, as it's possible the
+	 * pipe gets shutdown/closed by another thread.
+	 *
+	 * Fix this race later without holding the spinlock
+	 * across the pipe signaling.
+	 */
+
+	/* Signal */
+	if (pipe->owner_task != KERN_TASK_ID_NONE) {
+		kern_task_signal(pipe->owner_task, KERN_SIGNAL_TASK_PIPE);
+	}
+
 	return t;
 }
 
@@ -263,4 +385,19 @@ kern_ipc_pipe_flush(kern_ipc_pipe_t *pipe, uint32_t *num)
 	error = kern_ipc_pipe_flush_locked(pipe, num);
 	platform_spinlock_unlock(&kern_ipc_pipe_spinlock);
 	return error;
+}
+
+uint16_t
+kern_ipc_msg_payload_len(const kern_ipc_msg_t *msg)
+{
+	if (msg->len < sizeof(kern_ipc_msg_t)) {
+		return 0;
+	}
+	return msg->len - sizeof(kern_ipc_msg_t);
+}
+
+const char *
+kern_ipc_msg_payload_buf(const kern_ipc_msg_t *msg)
+{
+	return ((const char *) msg) + sizeof(kern_ipc_msg_t);
 }
