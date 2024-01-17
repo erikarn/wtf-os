@@ -116,6 +116,10 @@ kern_task_mem_cleanup(struct task_mem *tm)
  *
  * Yes, this is hard-coded and very specific to the cortex-M4;
  * chances are it should be migrated into the platform code.
+ *
+ * TODO: combine the RW and RO segments together when doing
+ * physmem allocation and then save on the slots being used
+ * here!
  */
 bool
 kern_task_mem_setup_mpu(struct kern_task *task)
@@ -159,6 +163,10 @@ kern_task_mem_setup_mpu(struct kern_task *task)
 	/* task rodata */
 
 	/* task BSS */
+	addr = kern_task_mem_get_start(&task->task_mem, TASK_MEM_ID_USER_BSS);
+	size = kern_task_mem_get_size(&task->task_mem, TASK_MEM_ID_USER_BSS);
+	platform_mpu_table_set(&task->mpu_phys_table[6],
+	    addr, size, PLATFORM_PROT_TYPE_NOEXEC_RW);
 
 	return (true);
 }

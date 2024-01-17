@@ -44,6 +44,39 @@
 
 LOGGING_EXT(LOG_TASKMEM);
 
+static uint32_t
+platform_user_task_mpu_region_size(paddr_size_t len)
+{
+	paddr_size_t mpu_min;
+	paddr_size_t ret_len = 1;
+	int i;
+
+	mpu_min = platform_mpu_table_min_region_size();
+
+	/* Handle 0 -> small allocations */
+	if (len < mpu_min) {
+		return mpu_min;
+	}
+
+	/* Align to power of 2, to simplify MPU logic */
+	/* TODO: (ie, not yet doing MPU subregions) */
+	/* TODO: this is from arm_v4_platform.c, make a library */
+	for (i = 0; i < 30; i++) {
+		if (ret_len >= len)
+			return ret_len;
+		ret_len = ret_len << 1;
+	}
+
+	/* Eep, return orig size, hope it fails correctly */
+	return len;
+}
+
+static uint32_t
+platform_user_task_mpu_region_alignment(paddr_size_t len)
+{
+	return platform_user_task_mpu_region_size(len);
+}
+
 /**
  * Allocate RAM for a new user task.
  *
@@ -67,8 +100,6 @@ LOGGING_EXT(LOG_TASKMEM);
  *
  * Note: the caller must call kern_task_mem_cleanup() to free any
  * memory that we've allocated before we hit an error.
- *
- * XXX TODO: any of the MPU related stuff.
  */
 bool
 platform_user_task_mem_allocate(const struct user_exec_program_header *hdr,
@@ -104,69 +135,71 @@ platform_user_task_mem_allocate(const struct user_exec_program_header *hdr,
 	addrs.rodata_addr = pak.payload_start + hdr.rodata_offset;
 #endif
 
-	/*
-	 * Note: for MPU, minimium size here is 32 bytes.
-	 * So we round smaller entries up.
-	 *
-	 * For blank segments (eg if we have no data segment for some reason)
-	 * we should either allocate a 32 byte fake MPU segment for it, or
-	 * add the extra logic to just not allocate RAM for that segment and
-	 * then not validate the MPU validity of it.
-	 */
-
-	/* Allocate RAM - not MPU aligned for now */
-	addrs->got_addr = kern_physmem_alloc(/*hdr->got_size*/ 32, 32, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	/* MPU aligned, sized RAM */
+	addrs->got_addr = kern_physmem_alloc(
+	    platform_user_task_mpu_region_size(hdr->got_size),
+	    platform_user_task_mpu_region_alignment(hdr->got_size),
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->got_addr == 0) {
 		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_CRIT,
 		     "failed to allocate %s", "user GOT");
 		goto error;
 	}
 	console_printf("got_addr: 0x%x -> 0x%x\n",
-	    addrs->got_addr, addrs->got_addr + hdr->got_size - 1);
+	    addrs->got_addr,
+	    addrs->got_addr + platform_user_task_mpu_region_alignment(hdr->got_size) - 1);
 
-	addrs->bss_addr = kern_physmem_alloc(hdr->bss_size, 8, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs->bss_addr = kern_physmem_alloc(
+	    platform_user_task_mpu_region_size(hdr->bss_size),
+	    platform_user_task_mpu_region_alignment(hdr->bss_size),
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->bss_addr == 0) {
 		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_CRIT,
 		     "failed to allocate %s", "user bss");
 		goto error;
 	}
 	console_printf("bss_addr: 0x%x -> 0x%x\n",
-	    addrs->bss_addr, addrs->bss_addr + hdr->bss_size - 1);
+	    addrs->bss_addr,
+	    addrs->bss_addr + platform_user_task_mpu_region_alignment(hdr->bss_size) - 1);
 
-	addrs->data_addr = kern_physmem_alloc(hdr->data_size,
-	    hdr->data_size, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs->data_addr = kern_physmem_alloc(
+	    platform_user_task_mpu_region_size(hdr->data_size),
+	    platform_user_task_mpu_region_alignment(hdr->data_size),
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->data_addr == 0) {
 		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_CRIT,
 		     "failed to allocate %s", "user data");
 		goto error;
 	}
 	console_printf("data_addr: 0x%x -> 0x%x\n",
-	    addrs->data_addr, addrs->data_addr + hdr->data_size - 1);
+	     addrs->data_addr,
+	     addrs->data_addr + platform_user_task_mpu_region_alignment(hdr->data_size) - 1);
 
-	addrs->heap_addr = kern_physmem_alloc(hdr->heap_size,
-	    hdr->heap_size, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	addrs->heap_addr = kern_physmem_alloc(
+	    platform_user_task_mpu_region_size(hdr->heap_size),
+	    platform_user_task_mpu_region_alignment(hdr->heap_size),
+	    KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->heap_addr == 0) {
 		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_CRIT,
 		     "failed to allocate %s", "user heap");
 		goto error;
 	}
 	console_printf("heap_addr: 0x%x -> 0x%x\n",
-	    addrs->heap_addr, addrs->heap_addr + hdr->heap_size - 1);
+	    addrs->heap_addr,
+	    addrs->heap_addr + platform_user_task_mpu_region_alignment(hdr->heap_size) - 1);
 
-	/*
-	 * note - this is a stack, so the aligment (min 8 bytes) is for stack
-	 * alignment, not general RAM alignment.  It likely should have
-	 * a PLATFORM define too.
-	 */
-	addrs->stack_addr = kern_physmem_alloc(hdr->stack_size,
-	     hdr->stack_size, KERN_PHYSMEM_ALLOC_FLAG_ZERO);
+	/* User stack: requires MPU alignment */
+	addrs->stack_addr = kern_physmem_alloc(
+	    platform_user_task_mpu_region_size(hdr->stack_size),
+	    platform_user_task_mpu_region_alignment(hdr->stack_size),
+	     KERN_PHYSMEM_ALLOC_FLAG_ZERO);
 	if (addrs->stack_addr == 0) {
 		KERN_LOG(LOG_TASKMEM, KERN_LOG_LEVEL_CRIT,
 		     "failed to allocate %s", "user stack");
 		goto error;
 	}
 	console_printf("stack_addr: 0x%x -> 0x%x\n", addrs->stack_addr,
-	    addrs->stack_addr + hdr->stack_size - 1);
+	    addrs->stack_addr + platform_user_task_mpu_region_alignment(hdr->stack_size) - 1);
 
 	/* XIP */
 	/*
@@ -177,16 +210,28 @@ platform_user_task_mem_allocate(const struct user_exec_program_header *hdr,
 	 */
 	kern_task_mem_set(tm, TASK_MEM_ID_TEXT, 0x08000000, 0x200000, false);
 
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_GOT, addrs->got_addr, /* hdr->got_size */ 32, true);
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_BSS, addrs->bss_addr, hdr->bss_size, true);
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_DATA, addrs->data_addr, hdr->data_size, true);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_GOT, addrs->got_addr,
+	    platform_user_task_mpu_region_size(hdr->got_size),
+	    true);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_BSS, addrs->bss_addr,
+	    platform_user_task_mpu_region_size(hdr->bss_size),
+	    true);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_DATA, addrs->data_addr,
+	    platform_user_task_mpu_region_size(hdr->data_size),
+	    true);
 
 	/* XIP */
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_RODATA, addrs->rodata_addr, hdr->rodata_size, false);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_RODATA,
+	    addrs->rodata_addr, hdr->rodata_size, false);
 
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_HEAP, addrs->heap_addr, hdr->heap_size, true);
-	kern_task_mem_set(tm, TASK_MEM_ID_USER_STACK, addrs->stack_addr, hdr->stack_size, true);
-	kern_task_mem_set(tm, TASK_MEM_ID_KERN_STACK, kern_stack, PLATFORM_DEFAULT_KERN_STACK_SIZE, true);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_HEAP, addrs->heap_addr,
+	    platform_user_task_mpu_region_size(hdr->heap_size),
+	    true);
+	kern_task_mem_set(tm, TASK_MEM_ID_USER_STACK, addrs->stack_addr,
+	    platform_user_task_mpu_region_size(hdr->stack_size),
+	    true);
+	kern_task_mem_set(tm, TASK_MEM_ID_KERN_STACK, kern_stack,
+	    PLATFORM_DEFAULT_KERN_STACK_SIZE, true);
 
 	return (true);
 error:
