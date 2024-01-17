@@ -41,6 +41,8 @@ typedef enum {
  */
 typedef uintptr_t kern_task_id_t;
 
+#define	KERN_TASK_ID_NONE		0
+
 /*
  * This defines a single task.
  *
