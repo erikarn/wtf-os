@@ -307,7 +307,7 @@ platform_mpu_table_entry_validate(uint32_t base_addr, uint32_t size,
 	uint32_t mask;
 
 	/* minimum size */
-	if (size < 32) {
+	if (size < ARM_M4_MPU_MIN_REGION_SIZE) {
 		console_printf("%s: invalid size (%d)!\n", __func__, size);
 		return (false);
 	}
@@ -361,7 +361,7 @@ platform_mpu_table_set(platform_mpu_phys_entry_t *e, uint32_t base_addr,
 	}
 
 	/* minimum size */
-	if (size < 32) {
+	if (size < ARM_M4_MPU_MIN_REGION_SIZE) {
 		console_printf("%s: invalid size (%d)!\n", __func__, size);
 		return (false);
 	}
@@ -449,3 +449,10 @@ platform_mpu_table_program(const platform_mpu_phys_entry_t *table)
 		    table[i].rasr_reg);
 	}
 }
+
+uint32_t
+platform_mpu_table_min_region_size(void)
+{
+	return ARM_M4_MPU_MIN_REGION_SIZE;
+}
+

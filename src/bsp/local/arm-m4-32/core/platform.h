@@ -39,5 +39,6 @@ extern	bool platform_mpu_table_entry_validate(uint32_t base_addr,
 extern	bool platform_mpu_table_set(platform_mpu_phys_entry_t *table,
 	    uint32_t addr, uint32_t size, platform_prot_type_t prot_type);
 extern	void platform_mpu_table_program(const platform_mpu_phys_entry_t *table);
+extern	uint32_t platform_mpu_table_min_region_size(void);
 
 #endif	/* __ARM_M4_PLATFORM_H__ */
