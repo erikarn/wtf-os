@@ -81,6 +81,7 @@ SRCS += $(KERN_SUBDIR)/syscalls/syscall.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall_putsn.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall_sleep.c
 SRCS += $(KERN_SUBDIR)/syscalls/syscall_exit.c
+SRCS += $(KERN_SUBDIR)/tasks/console.c
 
 SRCS += $(KERN_SUBDIR)/libraries/printf/mini_printf.c
 SRCS += $(KERN_SUBDIR)/libraries/string/strlen.c

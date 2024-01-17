@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Adrian Chadd <adrian@freebsd.org>.
+ * Copyright (C) 2022-2024 Adrian Chadd <adrian@freebsd.org>.
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -54,6 +54,8 @@
 #include "core/arm_m4_systick.h"
 #include "core/arm_m4_nvic.h"
 #include "core/arm_m4_mpu.h"
+
+#include "kern/tasks/console.h"
 
 flash_resource_span_t flash_span;
 
@@ -180,6 +182,11 @@ USART1_IRQHandler(void)
 	int16_t r;
 	stm32f429_uart_interrupt();
 
+	/*
+	 * TODO: this should be claimed by the console task
+	 * (eventually) so a console owner can interact with that
+	 * task.
+	 */
 	r = stm32f429_uart_try_read();
 	if (r > -1) {
 		console_input(r);
@@ -337,6 +344,12 @@ main(void)
 
     /* Setup task system, idle task; test tasks, etc but not run them */
     kern_task_setup();
+
+    /*
+     * console IO task, for tasks wishing to do interactive
+     * console IO.
+     */
+    kern_task_console_init();
 
     /* Our (compiled in, not flash loaded) test userland task */
     setup_test_userland_task();
