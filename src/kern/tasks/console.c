@@ -100,10 +100,18 @@ kern_console_consume(void)
 		return false;
 	}
 
+#if 1
+	console_printf("CONSOLE: : %d bytes\n", kern_ipc_msg_payload_len(msg));
+#endif
+
+#if 0
 	/* Write data */
 	console_putsn(kern_ipc_msg_payload_buf(msg),
 	    kern_ipc_msg_payload_len(msg));
-
+#endif
+#if 1
+	console_printf("\n");
+#endif
 	return true;
 }
 
@@ -117,12 +125,23 @@ kern_console_task_fn(void)
 	/* Enable all task signals for now */
 	kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
 
+	/* 1 second timer for now */
+	kern_task_timer_set(current_task, 1000);
+
 	while (1) {
 		/* Consume and write the console data to the console */
 		while (kern_console_consume() == true)
 			;
 		/* Wait for the next message */
-		(void) kern_task_wait(KERN_SIGNAL_TASK_PIPE, &sig);
+		(void) kern_task_wait(KERN_SIGNAL_TASK_PIPE |
+		    KERN_SIGNAL_TASK_KSLEEP, &sig);
+
+		if (sig & KERN_SIGNAL_TASK_KSLEEP) {
+			/* Timer fired, for debugging/testing */
+			KERN_LOG(LOG_TASK_CONSOLE,
+			    KERN_LOG_LEVEL_INFO, "[console] timer!");
+			kern_task_timer_set(current_task, 1000);
+		}
 	}
 
 	KERN_LOG(LOG_TASK_CONSOLE,
@@ -146,6 +165,10 @@ kern_console_task_fn(void)
 void
 kern_task_console_init(void)
 {
+
+	KERN_LOG(LOG_TASK_CONSOLE, KERN_LOG_LEVEL_INFO,
+	    "Setup!");
+
 	/* Setup the console IO pipe */
 	kern_ipc_pipe_setup(&console_ipc_pipe,
 	    console_ipc_buf,
@@ -158,6 +181,8 @@ kern_task_console_init(void)
 	    (stack_addr_t) kern_console_task_stack,
 	     sizeof(kern_console_task_stack),
 	    0);
+	/* Start the task */
+	kern_task_start(&console_task);
 }
 
 
