@@ -55,6 +55,49 @@ kern_ipc_pipe_consume_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
 	return KERN_ERR_UNIMPLEMENTED;
 }
 
+static uint32_t
+kern_ipc_pipe_space_left_locked(kern_ipc_pipe_t *pipe)
+{
+
+	return (pipe->buf_size - pipe->buf_offset);
+}
+
+static kern_error_t
+kern_ipc_pipe_queue_locked(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
+{
+
+	if (pipe->state != KERN_IPC_PIPE_STATE_OPEN) {
+		return KERN_ERR_SHUTDOWN;
+	}
+
+	/* Check message size */
+	if (msg->len > pipe->max_msg_size) {
+		return KERN_ERR_TOOBIG;
+	}
+
+	/* Make sure we have enough space left */
+	if (msg->len > kern_ipc_pipe_space_left_locked(pipe)) {
+		return KERN_ERR_NOSPC;
+	}
+
+	/* Copy, advance offset */
+	kern_memcpy(
+	    pipe->buf_ptr + pipe->buf_offset,
+	    (const char *) msg,
+	    msg->len);
+
+	/* Bump offset along */
+	pipe->buf_offset += msg->len;
+
+	return KERN_ERR_OK;
+}
+
+kern_error_t
+kern_ipc_pipe_dequeue_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
+{
+	return KERN_ERR_UNIMPLEMENTED;
+}
+
 static kern_error_t
 kern_ipc_pipe_flush_locked(kern_ipc_pipe_t *pipe, uint32_t *num)
 {
@@ -151,7 +194,13 @@ kern_ipc_pipe_set_owner(kern_ipc_pipe_t *pipe, kern_task_id_t task)
 kern_error_t
 kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 {
-	return KERN_ERR_UNIMPLEMENTED;
+	kern_error_t t;
+
+	platform_spinlock_lock(&kern_ipc_pipe_spinlock);
+	t = kern_ipc_pipe_queue_locked(pipe, msg);
+	platform_spinlock_unlock(&kern_ipc_pipe_spinlock);
+
+	return t;
 }
 
 /*
@@ -167,7 +216,12 @@ kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 kern_error_t
 kern_ipc_pipe_dequeue(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
 {
-	return KERN_ERR_UNIMPLEMENTED;
+	kern_error_t t;
+
+	platform_spinlock_lock(&kern_ipc_pipe_spinlock);
+	t = kern_ipc_pipe_dequeue_locked(pipe, msg);
+	platform_spinlock_unlock(&kern_ipc_pipe_spinlock);
+	return t;
 }
 
 /*
