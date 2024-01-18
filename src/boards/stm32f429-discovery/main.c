@@ -330,8 +330,8 @@ main(void)
     /* Setup task system, idle task; test tasks, etc but not run them */
     kern_task_setup();
 
-    /* Our test userland task */
-    //setup_test_userland_task();
+    /* Our (compiled in, not flash loaded) test userland task */
+    setup_test_userland_task();
 
     /* Ok, let's try loading TEST.BIN */
     test_userload();
