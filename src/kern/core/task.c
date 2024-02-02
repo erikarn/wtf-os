@@ -37,6 +37,9 @@
 #include <kern/core/physmem.h>
 #include <kern/console/console.h>
 
+#include <kern/core/error.h> /* for port.h below */
+#include <kern/ipc/port.h>
+
 #include <core/platform.h>
 #include <core/lock.h>
 
@@ -380,9 +383,27 @@ skip:
 static void
 kern_task_cleanup(struct kern_task *task)
 {
+	struct list_node *node;
+	struct kern_ipc_port *port;
+
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
 
 	/* XXX TODO: need to clean up ports, IPC too */
+
+	/* Ports */
+	while (task->task_port_list.head != NULL) {
+		node = task->task_port_list.head;
+		port = container_of(node, struct kern_ipc_port, owner_node);
+
+		/* XXX TODO: ownership should be in a list abstraction? */
+
+		/* Remove it from this task list */
+		list_delete(&task->task_port_list, node);
+		port->owner_task = KERN_TASK_ID_NONE;
+
+		/* Close it, no owner so no signal/notifications now */
+		kern_ipc_port_destroy(port);
+	}
 
 	/* Clean up memory regions where required */
 	kern_task_mem_cleanup(&task->task_mem);
