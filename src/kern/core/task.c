@@ -40,6 +40,10 @@
 #include <core/platform.h>
 #include <core/lock.h>
 
+/* TODO: because the task port cleanup / iteration is done here */
+#include <kern/core/error.h>
+#include <kern/ipc/port.h>
+
 struct kern_task *current_task = NULL;
 static platform_spinlock_t kern_task_spinlock;
 
@@ -386,9 +390,38 @@ skip:
 static void
 kern_task_cleanup(struct kern_task *task)
 {
+	struct list_node *n;
+	struct kern_ipc_port *port;
+
 	KERN_LOG(LOG_TASK, KERN_LOG_LEVEL_INFO, "cleaning task 0x%08x", task);
 
-	/* XXX TODO: shut down, clean up messages, ports, etc. */
+	/* Shut down, clean up messages, ports, etc. */
+	/* TODO: would be nice if this were just an "object" thing, eh */
+	while (! list_is_empty(&task->task_port_list)) {
+		n = task->task_port_list.head;
+		port = container_of(n, struct kern_ipc_port, owner_node);
+
+		/* XXX TODO: all of this should live in the ipc code, not here */
+
+		/* Remove our ownership of it */
+		/*
+		 * This ensures we don't get any further notifications
+		 * during shutdown.
+		 */
+
+		list_delete(&task->task_port_list, n);
+		port->owner_task = 0; /* XXX TODO: should make a NULL TASK define */
+
+		/*
+		 * Close it, freeing any links to other ports / messages,
+		 * sending them notifications, etc.
+		 */
+		kern_ipc_port_close(port);
+		kern_ipc_port_free_reference(port);
+
+		/* And now try to destroy the port, will free if the refcount is zero */
+		kern_ipc_port_destroy(port);
+	}
 
 	/* Clean up memory regions where required */
 	kern_task_mem_cleanup(&task->task_mem);

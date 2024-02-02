@@ -93,6 +93,8 @@ kern_ipc_port_get_reference(struct kern_ipc_port *port)
 
 /**
  * Called by the port reference owner, whether it's task local or not.
+ *
+ * Once the refcount is zero, it can be freed.
  */
 void
 kern_ipc_port_free_reference(struct kern_ipc_port *port)
@@ -277,10 +279,16 @@ kern_ipc_port_create(kern_task_id_t task)
 	return (port);
 }
 
+/**
+ * Destroy the allocation of this port.
+ *
+ * This will eventually check if the port refcount is zero,
+ * and only do work when it is.
+ */
 void
 kern_ipc_port_destroy(struct kern_ipc_port *port)
 {
-	console_printf("%s: TODO!\n", __func__);
+	console_printf("%s: TODO!; refcount=%d\n", __func__, port->refcount);
 }
 
 /**
