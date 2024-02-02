@@ -211,32 +211,20 @@ kern_ipc_port_delete_name(const char *name)
 /**
  * Initialise the given port.
  *
- * It will be initialised with the given parameters and connected
- * to the given task.
+ * It will be initialised with the given parameters.
  *
- * XXX TODO: this needs to use the task lock somehow!
  * Maybe this shouldn't be what users use, and instead a routine
  * in task.c creates a port specifically /for/ the task, and can
  * thus add it to the task list.
  */
 static kern_error_t
-kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
+kern_ipc_port_setup(struct kern_ipc_port *port)
 {
-	struct kern_task *t;
-
-	t = kern_task_lookup(task);
-	if (t == NULL) {
-		return (KERN_ERR_INVALID_TASKID);
-	}
 
 	list_node_init(&port->owner_node);
 	list_node_init(&port->name_node);
 	port->state = KERN_IPC_PORT_STATE_IDLE;
 	port->port_name[0] = '\0';
-
-	port->owner_task = task;
-
-	kern_task_refcount_dec(t); t = NULL;
 
 	/* Owner owns this! */
 	port->refcount = 1;
@@ -244,8 +232,15 @@ kern_ipc_port_setup(struct kern_ipc_port *port, kern_task_id_t task)
 	return (KERN_ERR_OK);
 }
 
+/*
+ * Create a port via malloc.
+ *
+ * It doesn't yet have an owner task.  The owning task
+ * needs to do a little bit of legwork adding it to its
+ * task list, etc.
+ */
 struct kern_ipc_port *
-kern_ipc_port_create(kern_task_id_t task)
+kern_ipc_port_create()
 {
 	struct kern_ipc_port *port;
 	kern_error_t err;
@@ -255,7 +250,7 @@ kern_ipc_port_create(kern_task_id_t task)
 	if (port == NULL) {
 		return (NULL);
 	}
-	err = kern_ipc_port_setup(port, task);
+	err = kern_ipc_port_setup(port);
 	if (err != KERN_ERR_OK) {
 		kern_physmem_free((paddr_t) port);
 		return (NULL);
@@ -275,6 +270,13 @@ kern_ipc_port_create(kern_task_id_t task)
 void
 kern_ipc_port_destroy(struct kern_ipc_port *port)
 {
+	/* Go through a shutdown/close path if required */
+	kern_ipc_port_close(port);
+
+	/*
+	 * refcount must be 1, if it's higher than
+	 * something still has a reference to this port!
+	 */
 	console_printf("%s: TODO!\n", __func__);
 }
 
@@ -329,8 +331,43 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 
 	/* TODO: all the work */
 
+	/* Remove it from the global namespace if required */
+
+	/* Remove it from any peer relationship if required */
+
+	/* And peer lists too, if we have multiple connections to us */
+
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
 	return (false);
+}
+
+/**
+ * Connect to the given remote port.
+ *
+ * This connects the given local port, local to the current task,
+ * to the given remote port (in any task.)
+ *
+ * This will check if the port is a service port or not, and
+ * either establish a service connection, or a straight peer
+ * to peer connection.
+ */
+kern_error_t
+kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
+{
+	return KERN_ERR_UNIMPLEMENTED;
+}
+
+/**
+ * Disconnect from the given remote port.
+ *
+ * This will disconnect from the given remote port,
+ * severing the port peer relationship and/or removing
+ * from the service list if appropriate.
+ */
+kern_error_t
+kern_ipc_port_disconnect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
+{
+	return KERN_ERR_UNIMPLEMENTED;
 }
 

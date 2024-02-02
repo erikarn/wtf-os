@@ -52,8 +52,15 @@ typedef enum {
 	KERN_IPC_PORT_STATE_CLOSED = 4,
 } kern_ipc_port_state_t;
 
-struct kern_ipc_port {
+typedef enum {
+	/* port isn't malloc'ed, so don't free() */
+	KERN_IPC_PORT_FLAGS_STATIC_MEM = 0x00000001,
 
+	/* port is a service, can handle >1 connects */
+	KERN_IPC_PORT_FLAGS_SERVICE = 0x00000002,
+} kern_ipc_port_flags_t;
+
+struct kern_ipc_port {
 	/*
 	 * For named ports... for now.  It's a waste of memory
 	 * having it here for non-named ports, but I want to at
@@ -72,6 +79,31 @@ struct kern_ipc_port {
 	/* Node on an ownership list (eg task) */
 	struct list_node owner_node;
 
+	/*
+	 * Peer port.  This is for a two way unicast data port
+	 * exchange.  For a service port that handles incoming
+	 * requests then this will be NULL, as it has multiple
+	 * peers.
+	 *
+	 * TODO: would be good to be able to just have a single
+	 * list of peers on both sides, and unicast peers just
+	 * have a single entry on each others list.
+	 */
+	struct kern_ipc_port *peer;
+
+	/*
+	 * Service list.  This is for a service port serving
+	 * multiple clients, handling incoming requests / replies,
+	 * and/or sending multicast replies.
+	 *
+	 * Eventually it may also support sending to specific
+	 * ports, but it'll require a specific port label.
+	 */
+	struct {
+		struct list_head head;
+		struct list_node node;
+	} service_list;
+
 	/* Port state */
 	kern_ipc_port_state_t state;
 
@@ -89,11 +121,14 @@ extern	bool kern_ipc_port_delete_name(const char *name);
 extern	kern_error_t kern_ipc_port_get_reference(struct kern_ipc_port *port);
 extern	void kern_ipc_port_free_reference(struct kern_ipc_port *port);
 
-extern	struct kern_ipc_port * kern_ipc_port_create(kern_task_id_t task);
+extern	struct kern_ipc_port * kern_ipc_port_create();
 extern	void kern_ipc_port_destroy(struct kern_ipc_port *);
 
 extern	bool kern_ipc_port_set_active(struct kern_ipc_port *port);
 extern	void kern_ipc_port_shutdown(struct kern_ipc_port *port);
 extern	bool kern_ipc_port_close(struct kern_ipc_port *port);
+
+extern	kern_error_t kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem);
+extern	kern_error_t kern_ipc_port_disconnect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem);
 
 #endif	/* __KERN_CORE_PORT_H__ */
