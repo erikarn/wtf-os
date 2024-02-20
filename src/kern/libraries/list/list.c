@@ -134,3 +134,10 @@ list_get_head(struct list_head *head)
 
 	return (head->head);
 }
+
+struct list_node *
+list_get_tail(struct list_head *head)
+{
+
+	return (head->tail);
+}
