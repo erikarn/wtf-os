@@ -185,6 +185,20 @@ done:
 	return (port);
 }
 
+static bool
+kern_ipc_port_delete_name_port_locked(struct kern_ipc_port *port)
+{
+	if ((port->flags & KERN_IPC_PORT_FLAGS_NAMED) == 0) {
+		return false;
+	}
+
+	list_delete(&kern_port_name_list, &port->name_node);
+	port->port_name[0] = '\0';
+	kern_ipc_port_free_reference_locked(port);
+
+	return true;
+}
+
 /**
  * Delete the given global port name.
  *
@@ -199,9 +213,7 @@ kern_ipc_port_delete_name(const char *name)
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port = kern_ipc_port_lookup_name_locked(name);
 	if (port != NULL) {
-		list_delete(&kern_port_name_list, &port->name_node);
-		port->port_name[0] = '\0';
-		kern_ipc_port_free_reference_locked(port);
+		kern_ipc_port_delete_name_port_locked(port);
 	}
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
@@ -277,7 +289,7 @@ kern_ipc_port_destroy(struct kern_ipc_port *port)
 	 * refcount must be 1, if it's higher than
 	 * something still has a reference to this port!
 	 */
-	console_printf("%s: TODO!\n", __func__);
+	console_printf("%s: TODO! Refcount! etc\n", __func__);
 }
 
 /**
@@ -298,6 +310,9 @@ kern_ipc_port_set_active(struct kern_ipc_port *port)
  * This will mark the current port as shutting down, further
  * messages can't be enqueued, but current messages will be
  * handled until the queue is empty.
+ *
+ * The peer relationship isn't torn down at this point;
+ * just that any further enqueues will fail.
  */
 void
 kern_ipc_port_shutdown(struct kern_ipc_port *port)
@@ -305,8 +320,42 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 	console_printf("%s: TODO\n", __func__);
 
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
+	/* Mark shutdown */
 	port->state = KERN_IPC_PORT_STATE_SHUTDOWN;
+
+	/* Remove from global namespace */
+	kern_ipc_port_delete_name_port_locked(port);
+
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+}
+
+static void
+_kern_ipc_port_reference_link_clear_locked(struct kern_ipc_port *port, struct kern_ipc_port *rem)
+{
+	kern_ipc_port_free_reference(port->peer);
+	kern_ipc_port_free_reference(port);
+}
+
+/*
+ * Remove links to any peer service ports to this port.
+ */
+static void
+_kern_ipc_port_service_list_deregister_locked(struct kern_ipc_port *port)
+{
+	struct list_node *n;
+	struct kern_ipc_port *rem;
+
+	while (! list_is_empty(&port->service_list.head)) {
+		n = list_get_head(&port->service_list.head);
+		rem = container_of(n, struct kern_ipc_port, service_list.node);
+
+		/* Remove from list */
+		list_delete(&port->service_list.head, n);
+
+		/* Remove the references between these two ports */
+		_kern_ipc_port_reference_link_clear_locked(port, rem);
+	}
 }
 
 /**
@@ -321,7 +370,7 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 bool
 kern_ipc_port_close(struct kern_ipc_port *port)
 {
-	console_printf("%s: TODO\n", __func__);
+	console_printf("%s: called\n", __func__);
 
 	/*
 	 * Skip shutdown; go straight to closed.
@@ -332,14 +381,35 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 	/* TODO: all the work */
 
 	/* Remove it from the global namespace if required */
+	kern_ipc_port_delete_name_port_locked(port);
+
+	/* TODO: notify pending/completed messages that they're done */
+	console_printf("%s: TODO: message pending/completed callback/completion\n", __func__);
 
 	/* Remove it from any peer relationship if required */
+	/* (Each has a refcount on each other here) */
+	if (port->peer != NULL) {
+		struct kern_ipc_port *rem = port->peer;
+
+		/* XXX TODO: turn into a method! */
+		port->peer->peer = NULL;
+		port->peer = NULL;
+
+		/* Clear the reference between the two ports */
+		/* TODO: what about messages that this remote port has queued to us? */
+		_kern_ipc_port_reference_link_clear_locked(port, rem);
+
+		/* TODO: hopefully the above doesn't free the damned ports! */
+	}
 
 	/* And peer lists too, if we have multiple connections to us */
+	/* TODO: what about messages that those ports have queued to us? */
+	_kern_ipc_port_service_list_deregister_locked(port);
 
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 
-	return (false);
+	/* For now we always return we were able to close it */
+	return (true);
 }
 
 /**
