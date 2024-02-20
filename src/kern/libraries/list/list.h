@@ -41,5 +41,6 @@ extern	void list_add_after(struct list_head *head,
 extern	void list_add_tail(struct list_head *head, struct list_node *node);
 extern	void list_delete(struct list_head *head, struct list_node *node);
 extern	bool list_is_empty(const struct list_head *head);
+extern	struct list_node * list_get_head(struct list_head *head);
 
 #endif	/* __LIB_LIST_LIST_H__ */
