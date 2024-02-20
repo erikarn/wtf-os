@@ -127,3 +127,10 @@ list_is_empty(const struct list_head *head)
 
 	return (head->head == NULL);
 }
+
+struct list_node *
+list_get_head(struct list_head *head)
+{
+
+	return (head->head);
+}
