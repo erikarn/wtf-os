@@ -58,6 +58,9 @@ typedef enum {
 
 	/* port is a service, can handle >1 connects */
 	KERN_IPC_PORT_FLAGS_SERVICE = 0x00000002,
+
+	/* port is a named port */
+	KERN_IPC_PORT_FLAGS_NAMED = 0x00000004,
 } kern_ipc_port_flags_t;
 
 struct kern_ipc_port {
@@ -68,6 +71,8 @@ struct kern_ipc_port {
 	 */
 	char port_name[KERN_IPC_PORT_NAME_LEN];
 	struct list_node name_node;
+
+	kern_ipc_port_flags_t flags;
 
 	/*
 	 * XXX TODO: for now I'm going to cheat and just put ports
@@ -113,11 +118,13 @@ struct kern_ipc_port {
 
 extern	void kern_ipc_port_init(void);
 
+/* Namespace */
 extern	kern_error_t kern_ipc_port_add_name(struct kern_ipc_port *port,
 	    const char *name);
 extern	struct kern_ipc_port * kern_ipc_port_lookup_name(const char *name);
 extern	bool kern_ipc_port_delete_name(const char *name);
 
+/* Reference counting */
 extern	kern_error_t kern_ipc_port_get_reference(struct kern_ipc_port *port);
 extern	void kern_ipc_port_free_reference(struct kern_ipc_port *port);
 
@@ -128,6 +135,7 @@ extern	bool kern_ipc_port_set_active(struct kern_ipc_port *port);
 extern	void kern_ipc_port_shutdown(struct kern_ipc_port *port);
 extern	bool kern_ipc_port_close(struct kern_ipc_port *port);
 
+/* Connection management */
 extern	kern_error_t kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem);
 extern	kern_error_t kern_ipc_port_disconnect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem);
 
