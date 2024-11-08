@@ -126,6 +126,9 @@ make_entry: flash_resource
 flash_resource:
 	cd tools/flash_resource && gmake all
 
+userland:
+	cd user/test/simple && gmake all
+
 wtfos: wtfos.img
 
 wtfos.bin: wtfos.elf
@@ -133,7 +136,7 @@ wtfos.bin: wtfos.elf
 
 # Yeah I definitely need build rules for the tools and
 # userland binary, but for now
-wtfos.img: wtfos.bin make_entry
+wtfos.img: wtfos.bin make_entry userland
 	tools/flash_resource/make_entry -s user/test/simple/test.bin -d test.pak -t 0x0102cdef -l TEST.BIN
 	cat wtfos.bin test.pak | dd of=wtfos.img
 
@@ -145,5 +148,6 @@ flash: wtfos
 
 clean:
 	cd tools/flash_resource && gmake clean
+	cd user/test/simple && gmake clean
 	rm -f $(C_OBJS) $(S_OBJS) $(SS_OBJS)
 	rm -f wtfos.elf wtfos.bin wtfos.img test.pak
