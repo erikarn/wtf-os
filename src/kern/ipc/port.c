@@ -293,13 +293,26 @@ kern_ipc_port_destroy(struct kern_ipc_port *port)
 }
 
 /**
+ * Mark the port as ready/active.
+ *
+ * Call with the lock held.
+ */
+static void
+_kern_ipc_port_set_active_locked(struct kern_ipc_port *port)
+{
+	port->state = KERN_IPC_PORT_STATE_RUNNING;
+}
+
+/**
  * Mark the port as ready/active to send/receive data on.
+ *
+ * (This is the public API, doesn't assume locking.)
  */
 bool
 kern_ipc_port_set_active(struct kern_ipc_port *port)
 {
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
-	port->state = KERN_IPC_PORT_STATE_RUNNING;
+	_kern_ipc_port_set_active_locked(port);
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
 	return (true);
 }
@@ -334,8 +347,17 @@ static void
 _kern_ipc_port_reference_link_clear_locked(struct kern_ipc_port *port,
     struct kern_ipc_port *rem)
 {
+	// TODO: why not rem ?
 	kern_ipc_port_free_reference(port->peer);
 	kern_ipc_port_free_reference(port);
+}
+
+static void
+_kern_ipc_port_reference_link_add_locked(struct kern_ipc_port *lcl,
+    struct kern_ipc_port *rem)
+{
+	kern_ipc_port_get_reference(lcl);
+	kern_ipc_port_get_reference(rem);
 }
 
 /*
@@ -363,6 +385,25 @@ _kern_ipc_port_service_list_deregister_locked(struct kern_ipc_port *port)
 }
 
 /**
+ * Link the given local port to the given remote port.
+ *
+ * It'll set the lcl->peer link, add it to the service list on the peer,
+ * and update refcounts.
+ *
+ * It assumes the ports are in the right state and there isn't
+ * an existing lcl->peer reference.
+ */
+static void
+_kern_ipc_port_register_peer_locked(struct kern_ipc_port *lcl,
+    struct kern_ipc_port *rem)
+{
+
+	lcl->peer = rem;
+	_kern_ipc_port_reference_link_add_locked(lcl, rem);
+	list_add_tail(&rem->service_list.head, &lcl->service_list.node);
+}
+
+/**
  * Remove the port->peer link.
  *
  * This removes the port from any service list it is currently on
@@ -377,12 +418,13 @@ _kern_ipc_port_deregister_peer_locked(struct kern_ipc_port *port)
 
 	struct kern_ipc_port *rem = port->peer;
 
-	/* XXX TODO: turn into a method! */
-	port->peer->peer = NULL;
+	/* remove from the peer service list */
+	list_delete(&rem->service_list.head, &port->service_list.node);
 	port->peer = NULL;
 
 	/* Clear the reference between the two ports */
 	/* TODO: what about messages that this remote port has queued to us? */
+	/* TODO: notify the peer */
 	_kern_ipc_port_reference_link_clear_locked(port, rem);
 }
 
@@ -440,7 +482,35 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 kern_error_t
 kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
 {
-	return KERN_ERR_UNIMPLEMENTED;
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
+
+	/* Make sure the current port is unconnected */
+	if (lcl->state != KERN_IPC_PORT_STATE_IDLE) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
+		/* XXX ALREADY_ACTIVE? */
+		return KERN_ERR_ALREADY_CONNECTED;
+	}
+	if (lcl->peer != NULL) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
+		return KERN_ERR_ALREADY_CONNECTED;
+	}
+
+	/* Make sure the remote port is RUNNING */
+	if (rem->state != KERN_IPC_PORT_STATE_RUNNING) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
+		return KERN_ERR_SHUTDOWN;
+	}
+
+	/* Ok, setup the peer relationship */
+	_kern_ipc_port_register_peer_locked(lcl, rem);
+
+	/* TODO: notify the remote that a new port connected? */
+
+	/* Mark the lcl port as RUNNING */
+	_kern_ipc_port_set_active_locked(lcl);
+
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+	return KERN_ERR_OK;
 }
 
 /**
@@ -453,6 +523,12 @@ kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
 kern_error_t
 kern_ipc_port_disconnect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
 {
+
+	/* Check if we're connected remote port */
+
+	/* Disconnect from the remote peer, remove from service list */
+
+	/* XXX TODO: messages? */
 	return KERN_ERR_UNIMPLEMENTED;
 }
 
