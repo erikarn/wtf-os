@@ -331,7 +331,8 @@ kern_ipc_port_shutdown(struct kern_ipc_port *port)
 }
 
 static void
-_kern_ipc_port_reference_link_clear_locked(struct kern_ipc_port *port, struct kern_ipc_port *rem)
+_kern_ipc_port_reference_link_clear_locked(struct kern_ipc_port *port,
+    struct kern_ipc_port *rem)
 {
 	kern_ipc_port_free_reference(port->peer);
 	kern_ipc_port_free_reference(port);
@@ -350,12 +351,39 @@ _kern_ipc_port_service_list_deregister_locked(struct kern_ipc_port *port)
 		n = list_get_head(&port->service_list.head);
 		rem = container_of(n, struct kern_ipc_port, service_list.node);
 
+		/* XXX TODO: need to notify the peer it's being deregistered */
+		/* TODO: what about messages that those ports have queued to us? */
+
 		/* Remove from list */
 		list_delete(&port->service_list.head, n);
 
 		/* Remove the references between these two ports */
 		_kern_ipc_port_reference_link_clear_locked(port, rem);
 	}
+}
+
+/**
+ * Remove the port->peer link.
+ *
+ * This removes the port from any service list it is currently on
+ * and informs the port that said peer is gone.
+ */
+static void
+_kern_ipc_port_deregister_peer_locked(struct kern_ipc_port *port)
+{
+	if (port->peer == NULL) {
+		return;
+	}
+
+	struct kern_ipc_port *rem = port->peer;
+
+	/* XXX TODO: turn into a method! */
+	port->peer->peer = NULL;
+	port->peer = NULL;
+
+	/* Clear the reference between the two ports */
+	/* TODO: what about messages that this remote port has queued to us? */
+	_kern_ipc_port_reference_link_clear_locked(port, rem);
 }
 
 /**
@@ -378,32 +406,19 @@ kern_ipc_port_close(struct kern_ipc_port *port)
 	platform_spinlock_lock(&kern_port_ipc_spinlock);
 	port->state = KERN_IPC_PORT_STATE_CLOSED;
 
-	/* TODO: all the work */
-
 	/* Remove it from the global namespace if required */
 	kern_ipc_port_delete_name_port_locked(port);
 
 	/* TODO: notify pending/completed messages that they're done */
 	console_printf("%s: TODO: message pending/completed callback/completion\n", __func__);
 
-	/* Remove it from any peer relationship if required */
-	/* (Each has a refcount on each other here) */
-	if (port->peer != NULL) {
-		struct kern_ipc_port *rem = port->peer;
+	/* Remove it from any linked peer relationship */
+	_kern_ipc_port_deregister_peer_locked(port);
 
-		/* XXX TODO: turn into a method! */
-		port->peer->peer = NULL;
-		port->peer = NULL;
-
-		/* Clear the reference between the two ports */
-		/* TODO: what about messages that this remote port has queued to us? */
-		_kern_ipc_port_reference_link_clear_locked(port, rem);
-
-		/* TODO: hopefully the above doesn't free the damned ports! */
-	}
-
-	/* And peer lists too, if we have multiple connections to us */
-	/* TODO: what about messages that those ports have queued to us? */
+	/*
+	 * Notify any service list peers as well,
+	 * if we have multiple connections to us.
+	 */
 	_kern_ipc_port_service_list_deregister_locked(port);
 
 	platform_spinlock_unlock(&kern_port_ipc_spinlock);
