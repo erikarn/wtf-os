@@ -32,5 +32,6 @@ typedef uint32_t kern_error_t;
 #define	KERN_ERR_INVALID_TASKID	0x8
 #define	KERN_ERR_UNIMPLEMENTED	0x9
 #define	KERN_ERR_TOOBIG		0xa
+#define	KERN_ERR_ALREADY_CONNECTED		0xb
 
 #endif	/* __KERN_CORE_ERROR_H__ */
