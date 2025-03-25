@@ -128,7 +128,7 @@ extern	bool kern_ipc_port_delete_name(const char *name);
 extern	kern_error_t kern_ipc_port_get_reference(struct kern_ipc_port *port);
 extern	void kern_ipc_port_free_reference(struct kern_ipc_port *port);
 
-extern	struct kern_ipc_port * kern_ipc_port_create();
+extern	struct kern_ipc_port * kern_ipc_port_create(void);
 extern	void kern_ipc_port_destroy(struct kern_ipc_port *);
 
 extern	bool kern_ipc_port_set_active(struct kern_ipc_port *port);
