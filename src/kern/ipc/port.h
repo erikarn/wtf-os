@@ -138,7 +138,6 @@ extern	bool kern_ipc_port_close(struct kern_ipc_port *port);
 /* Connection management */
 extern	kern_error_t kern_ipc_port_connect(struct kern_ipc_port *lcl,
 	    struct kern_ipc_port *rem);
-extern	kern_error_t kern_ipc_port_disconnect(struct kern_ipc_port *lcl,
-	    struct kern_ipc_port *rem);
+extern	kern_error_t kern_ipc_port_disconnect(struct kern_ipc_port *lcl);
 
 #endif	/* __KERN_CORE_PORT_H__ */
