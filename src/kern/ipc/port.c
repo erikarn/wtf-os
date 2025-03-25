@@ -252,7 +252,7 @@ kern_ipc_port_setup(struct kern_ipc_port *port)
  * task list, etc.
  */
 struct kern_ipc_port *
-kern_ipc_port_create()
+kern_ipc_port_create(void)
 {
 	struct kern_ipc_port *port;
 	kern_error_t err;
@@ -284,6 +284,8 @@ kern_ipc_port_destroy(struct kern_ipc_port *port)
 {
 	/* Go through a shutdown/close path if required */
 	kern_ipc_port_close(port);
+
+	/* TODO: when, freeing, check KERN_IPC_PORT_FLAGS_STATIC_MEM */
 
 	/*
 	 * refcount must be 1, if it's higher than
