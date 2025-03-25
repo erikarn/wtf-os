@@ -514,21 +514,31 @@ kern_ipc_port_connect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
 }
 
 /**
- * Disconnect from the given remote port.
+ * Disconnect the current local port from its peer, if any.
  *
- * This will disconnect from the given remote port,
+ * This will disconnect from the remote port,
  * severing the port peer relationship and/or removing
  * from the service list if appropriate.
  */
 kern_error_t
-kern_ipc_port_disconnect(struct kern_ipc_port *lcl, struct kern_ipc_port *rem)
+kern_ipc_port_disconnect(struct kern_ipc_port *lcl)
 {
+	platform_spinlock_lock(&kern_port_ipc_spinlock);
 
 	/* Check if we're connected remote port */
+	if (lcl->peer == NULL) {
+		platform_spinlock_unlock(&kern_port_ipc_spinlock);
+		return KERN_ERR_NO_PEER;
+	}
 
-	/* Disconnect from the remote peer, remove from service list */
+	/*
+	 * Disconnect from the remote peer, remove from service list,
+	 * flush messages.
+	 */
+	_kern_ipc_port_deregister_peer_locked(lcl);
 
-	/* XXX TODO: messages? */
-	return KERN_ERR_UNIMPLEMENTED;
+	platform_spinlock_unlock(&kern_port_ipc_spinlock);
+
+	return KERN_ERR_OK;
 }
 
