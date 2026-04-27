@@ -131,7 +131,7 @@ SECTIONS
   {
     LONG(0xffffffff);
     . = ALIGN(32);
-  } > FLASH=0xff
+  } > FLASH =0xff
 }
 
 
