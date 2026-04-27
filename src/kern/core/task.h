@@ -131,9 +131,9 @@ extern	void kern_task_init(struct kern_task *task, void *entry_point,
 	    void *arg, const char *name, stack_addr_t kern_stack,
 	    int kern_stack_size, uint32_t task_flags);
 
-extern	void kern_task_user_init(struct kern_task *task, void *entry_point,
-	    void *arg, uint32_t r9, const char *name, struct task_mem *task_mem,
-	    uint32_t task_flags);
+extern	void kern_task_user_init(struct kern_task *task, paddr_t entry_point,
+	    paddr_t arg, uint32_t r9, const char *name,
+	    struct task_mem *task_mem, uint32_t task_flags);
 
 extern	void kern_task_setup(void);
 extern	void kern_task_start(struct kern_task *task);

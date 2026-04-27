@@ -201,8 +201,8 @@ kern_task_init(struct kern_task *task, void *entry_point,
  * but doesn't add it to the runlist or start the task.
  */
 void
-kern_task_user_init(struct kern_task *task, void *entry_point,
-    void *arg, uint32_t r9, const char *name, struct task_mem *task_mem,
+kern_task_user_init(struct kern_task *task, paddr_t entry_point,
+    paddr_t arg, uint32_t r9, const char *name, struct task_mem *task_mem,
     uint32_t task_flags)
 {
 	paddr_t kern_stack, user_stack;
@@ -212,7 +212,7 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 
 	kern_task_generic_init(task, name);
 
-	task->kern_entry_point = entry_point;
+	task->kern_entry_point = (void *) entry_point;
 
 	/*
 	 * Transfer ownership of the memory to us.  At this point if we fail
@@ -251,7 +251,7 @@ kern_task_user_init(struct kern_task *task, void *entry_point,
 	 */
 	task->stack_top = platform_task_stack_setup(
 	    user_stack + user_stack_size,
-	    entry_point, arg, r9, true, kern_task_exit);
+	    (void *) entry_point, (void *) arg, r9, true, kern_task_exit);
 	/* And we program in our kernel stack for privileged code */
 	task->kern_stack_top = kern_stack + kern_stack_size;
 

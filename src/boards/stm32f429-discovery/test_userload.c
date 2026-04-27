@@ -189,7 +189,7 @@ test_userload(void)
 	 * value, and start execution!
 	 */
 	task = kern_malloc(sizeof(struct kern_task), 4);
-        kern_task_user_init(task, addrs.start_addr, NULL, addrs.got_addr,
+        kern_task_user_init(task, addrs.start_addr, 0, addrs.got_addr,
             "TEST.BIN",
             &tm,
             TASK_FLAGS_DYNAMIC_STRUCT | TASK_FLAGS_ENABLE_MPU);
