@@ -41,8 +41,8 @@ void
 _start(void)
 {
 //	uint32_t count = 0;
-	const char *teststr_1 = "test string 3!\r\n";
-	const char *teststr_2 = "test string 4!\r\n";
+	const char *teststr_1 = "test: test string 3!\r\n";
+	const char *teststr_2 = "test: test string 4!\r\n";
 
 	while (1) {
 #if 0
@@ -54,7 +54,7 @@ _start(void)
 
 #endif
 		/* CONSOLE_WRITE syscall */
-		syscall_test(0x00000001, (uintptr_t) ((count & 1) ? teststr_1 : teststr_2), 16, 0);
+		syscall_test(0x00000001, (uintptr_t) ((count & 1) ? teststr_1 : teststr_2), 22, 0);
 		/* TIMER_SLEEP syscall, 1 sec */
 		syscall_test(0x00000002, 1000, 0, 0);
 		count++;
