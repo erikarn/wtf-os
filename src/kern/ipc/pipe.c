@@ -150,6 +150,14 @@ kern_ipc_pipe_queue_locked(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 
 /*
  * Dequeue a message from the pipe.
+ *
+ * The caller provides 'msg', a buffer to copy data into.
+ * This includes its own length.
+ *
+ * This will return KERN_ERR_EMPTY if there's no data
+ * in the pipe, KERN_ERR_TOOBIG if the provided buffer isn't large
+ * enough to consume the message, KERN_ERR_SHUTDOWN if the pipe is
+ * not open, and .. well, I'm sure other errors.
  */
 kern_error_t
 kern_ipc_pipe_dequeue_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
@@ -184,8 +192,10 @@ kern_ipc_pipe_dequeue_locked(kern_ipc_pipe_t *pipe, kern_ipc_msg_t *msg)
 		return KERN_ERR_TOOBIG;
 	}
 
-	/* Copy the message .. */
-
+	/*
+	 * Copy the message; this copies the kern_ipc_msg_t entry in the pipe
+	 * buffer.
+	 */
 	kern_memcpy(msg, pipe->buf_ptr, len);
 
 	/* .. and consume it */
@@ -296,6 +306,14 @@ kern_ipc_pipe_set_owner(kern_ipc_pipe_t *pipe, kern_task_id_t task)
 	return KERN_ERR_OK;
 }
 
+/**
+ * @brief Attempt to queue the given message to the given IPC pipe.
+ *
+ * TODO: This doesn't sleep or wait or retry until the IPC pipe
+ * is available.  This is just purely right now "works or doesn't work".
+ * I'll need to eventually figure out how to timeout sleep on the
+ * send and have the consumers wake up senders once there's space.
+ */
 kern_error_t
 kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 {
@@ -304,6 +322,11 @@ kern_ipc_pipe_queue(kern_ipc_pipe_t *pipe, const kern_ipc_msg_t *msg)
 	platform_spinlock_lock(&kern_ipc_pipe_spinlock);
 	t = kern_ipc_pipe_queue_locked(pipe, msg);
 	platform_spinlock_unlock(&kern_ipc_pipe_spinlock);
+
+	/*
+	 * TODO: KERN_ERR_NOSPC means the sender doesn't have space and
+	 * we should retry.  Everything else should be treated as fatal.
+	 */
 
 	if (t != KERN_ERR_OK) {
 		return t;

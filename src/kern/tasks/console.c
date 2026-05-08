@@ -22,8 +22,10 @@
 #include <stdbool.h>
 
 #include <hw/types.h>
+#include <bsp/local/os/util.h> /* XXX */
 
 #include <kern/libraries/string/string.h>
+#include <kern/libraries/mem/mem.h>
 #include <kern/libraries/list/list.h>
 #include <kern/libraries/container/container.h>
 
@@ -52,7 +54,9 @@
  * for tasks which wish to do async console IO.
  */
 static struct kern_task console_task;
-static uint8_t kern_console_task_stack[256]
+static bool console_ipc_setup = false;
+/* TODO: why do i need a 512 byte stack for this! */
+static uint8_t kern_console_task_stack[PLATFORM_DEFAULT_KERN_STACK_SIZE]
 	    __attribute__ ((aligned(PLATFORM_DEFAULT_KERN_STACK_ALIGNMENT)))
 	     = { 0 };
 
@@ -100,16 +104,16 @@ kern_console_consume(void)
 		return false;
 	}
 
-#if 1
+#if 0
 	console_printf("CONSOLE: : %d bytes\n", kern_ipc_msg_payload_len(msg));
 #endif
 
-#if 0
+#if 1
 	/* Write data */
 	console_putsn(kern_ipc_msg_payload_buf(msg),
 	    kern_ipc_msg_payload_len(msg));
 #endif
-#if 1
+#if 0
 	console_printf("\n");
 #endif
 	return true;
@@ -123,10 +127,12 @@ kern_console_task_fn(void)
 	KERN_LOG(LOG_TASK_CONSOLE, KERN_LOG_LEVEL_INFO, "[console] started!");
 
 	/* Enable all task signals for now */
-	kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
+	//kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
+	//kern_task_set_sigmask(0xffffffff, KERN_SIGNAL_TASK_MASK);
 
-	/* 1 second timer for now */
-	kern_task_timer_set(current_task, 1000);
+	/* 5 second timer for now */
+	kern_task_timer_set(current_task, 5000);
+	kern_ipc_pipe_set_owner(&console_ipc_pipe, kern_task_to_id(current_task));
 
 	while (1) {
 		/* Consume and write the console data to the console */
@@ -174,7 +180,9 @@ kern_task_console_init(void)
 	    console_ipc_buf,
 	    KERN_CONSOLE_TASK_BUF_SIZE,
 	    KERN_CONSOLE_TASK_MSG_SIZE);
+	console_ipc_setup = true;
 
+#if 1
 	/* Start the task */
 	kern_task_init(&console_task, kern_console_task_fn,
 	     NULL, "task_console",
@@ -183,11 +191,13 @@ kern_task_console_init(void)
 	    0);
 	/* Start the task */
 	kern_task_start(&console_task);
+#endif
 }
 
 
 /*
- * Note: right now there's no way to write INTO the IPC pipe here.
+ * Note: this is a library function designed to be used by other
+ * tasks wanting to send IPC messages for console output.
  *
  * Why? I'm still thinking of how to do it given that there's no
  * blocking or signaling when the producer side can't write.
@@ -197,3 +207,40 @@ kern_task_console_init(void)
  * userland tasks would need to handle the console write path being full
  * and try again.
  */
+void
+kern_console_api_send(const char *buf, const int len)
+{
+	/*
+	 * TODO: allocating a stack buffer just to send 32 bytes of
+	 * the console IO at a time is wasteful; I think I want a pipe
+	 * API that takes the msg header and payload, and then I
+	 * copy them in appropriately into the pipe.
+	 */
+	char msg_buf[KERN_CONSOLE_TASK_MSG_SIZE];
+	const char *p;
+	int l;
+	kern_error_t err;
+
+	if (console_ipc_setup == false)
+		return;
+
+	p = buf; l = len;
+	while (l > 0) {
+		kern_ipc_msg_t *msg;
+		int wl;
+
+		/* Figure out how much of the buffer to write */
+		/* XXX see comment above; this is dumb to do here */
+		wl = BSP_UTIL_MIN(KERN_CONSOLE_TASK_MSG_SIZE -
+		    sizeof(kern_ipc_msg_t), l);
+		msg = (kern_ipc_msg_t *) msg_buf;
+		msg->len = wl + sizeof(kern_ipc_msg_t);
+		msg->id = 42; /* XXX */
+		kern_memcpy(msg_buf + sizeof(kern_ipc_msg_t), p, wl);
+		err = kern_ipc_pipe_queue(&console_ipc_pipe, msg);
+		(void) err; /* XXX */
+
+		l -= wl;
+		p += wl;
+	}
+}

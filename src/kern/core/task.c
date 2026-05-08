@@ -527,6 +527,10 @@ kern_idle_task_fn(void)
 	}
 }
 
+/* XXX hack for now to call console send */
+
+extern void kern_console_api_send(const char *buf, const int len);
+
 static void
 kern_test_task_fn(void)
 {
@@ -551,6 +555,7 @@ kern_test_task_fn(void)
 		    "[test] **** (tick=0x%08x), entering wait!",
 		    (uint32_t) kern_timer_tick_msec);
 		(void) kern_task_wait(KERN_SIGNAL_TASK_KSLEEP, &sig);
+		kern_console_api_send("Hello, console!\n", 16);
 		/*
 		 * Uncomment this to have the task exit after 10 iterations.
 		 */
